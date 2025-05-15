@@ -1,0 +1,36 @@
+# Ignore build output
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Logs
+*.log
+
+# Visual Studio Code
+.vscode/
+
+# Temporary files
+*.tmp
+*.temp
+
+# DotNet specific
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Rider
+.idea/
+*.iml
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Application settings
+appsettings.Development.json
+appsettings.json
