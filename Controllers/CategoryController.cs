@@ -62,6 +62,7 @@ public class CategoryController : ControllerBase
     /// Edit category by Id
     /// </summary>
     /// <param name="id"></param>
+    /// <param name="updateCategory"></param>
     /// <returns>Edit category by Id</returns>
     [HttpPut("{id}")]
     public ActionResult UpdateCategoryById(Guid id, [FromBody] Category updateCategory)

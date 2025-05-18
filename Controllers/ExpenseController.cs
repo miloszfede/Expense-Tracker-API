@@ -62,6 +62,7 @@ public class ExpenseController : ControllerBase
     /// <summary>
     /// Update expense by Id
     /// </summary>
+    /// <param name="updateExpense"></param>
     /// <param name="id"></param>
     /// <returns>Updated expense</returns>
     [HttpPut("{id}")]

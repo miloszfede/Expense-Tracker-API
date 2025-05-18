@@ -65,6 +65,7 @@ public class UserController : ControllerBase
     /// Update user by Id
     /// </summary>
     /// <param name="id"></param>
+    /// <param name="updateUser"></param>
     /// <returns>Updated user</returns>
     [HttpPut("{id}")]
     public ActionResult UpdateUserById(Guid id, [FromBody] User updateUser)

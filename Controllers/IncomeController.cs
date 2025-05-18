@@ -63,6 +63,7 @@ public class IncomeController : ControllerBase
     /// Update income by Id
     /// </summary>
     /// <param name="id"></param>
+    /// <param name="updateIncome"></param>
     /// <returns>Updated income</returns>
     [HttpPut("{id}")]
     public ActionResult UpdateIncomeById(Guid id, [FromBody] Income updateIncome)
