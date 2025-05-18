@@ -7,7 +7,11 @@ namespace ExpanseTracker.Controllers;
 [Route("Balance")]
 public class BalanceController : ControllerBase
 {
-    
+
+    /// <summary>
+    /// Get total balance
+    /// </summary>
+    /// <returns>Total balance</returns>
     [HttpGet("total")]
     public ActionResult<decimal> GetBalance()
     {

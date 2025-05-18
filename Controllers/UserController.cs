@@ -17,12 +17,22 @@ public class UserController : ControllerBase
         new User("michal", "michal@gmail.com", "HASLO")
     };
 
+
+    /// <summary>
+    /// Get all users
+    /// </summary>
+    /// <returns>All users</returns>
     [HttpGet]
     public ActionResult<IEnumerable<User>> GetUsers()
     {
         return Ok(Users.Select(u => new { u.Id, u.Username, u.Email }));
     }
 
+    /// <summary>
+    /// Get user by Id
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns>User by Id</returns>
     [HttpGet("{id}")]
     public ActionResult GetUserById(Guid id)
     {
@@ -34,6 +44,11 @@ public class UserController : ControllerBase
         return Ok(new { user.Id, user.Username, user.Email });
     }
 
+    /// <summary>
+    /// Delete user by Id
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns>Removes user</returns>
     [HttpDelete("{id}")]
     public ActionResult DeleteUserById(Guid id)
     {
@@ -46,6 +61,11 @@ public class UserController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Update user by Id
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns>Updated user</returns>
     [HttpPut("{id}")]
     public ActionResult UpdateUserById(Guid id, [FromBody] User updateUser)
     {
@@ -66,6 +86,10 @@ public class UserController : ControllerBase
         return Ok(new { user.Id, user.Username, user.Email });
     }
 
+    /// <summary>
+    /// Add new user
+    /// </summary>
+    /// <returns>New user</returns>
     [HttpPost]
     public ActionResult AddUser([FromBody] User addUser)
     {

@@ -16,12 +16,21 @@ public class ExpenseController : ControllerBase
         new Expense(112)
     };
 
+    /// <summary>
+    /// Get all expenses
+    /// </summary>
+    /// <returns>all expenses</returns>
     [HttpGet]
     public ActionResult<IEnumerable<Expense>> GetExpenses()
     {
         return Ok(Expenses.Select(i => new { i.Id, i.Amount, i.Category, i.Date, i.Note }));
     }
 
+    /// <summary>
+    /// Get expense by Id
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns>Expense by Id</returns>
     [HttpGet("{id}")]
     public ActionResult GetExpenseById(Guid id)
     {
@@ -33,6 +42,11 @@ public class ExpenseController : ControllerBase
         return Ok(new { Expense.Id, Expense.Amount, Expense.Category, Expense.Date, Expense.Note });
     }
 
+    /// <summary>
+    /// Delete expense by Id
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns>Removes expense</returns>
     [HttpDelete("{id}")]
     public ActionResult DeleteExpenseById(Guid id)
     {
@@ -45,6 +59,11 @@ public class ExpenseController : ControllerBase
         return NoContent();
     }
 
+    /// <summary>
+    /// Update expense by Id
+    /// </summary>
+    /// <param name="id"></param>
+    /// <returns>Updated expense</returns>
     [HttpPut("{id}")]
     public ActionResult UpdateExpenseById(Guid id, [FromBody] Expense updateExpense)
     {
@@ -61,6 +80,10 @@ public class ExpenseController : ControllerBase
         return Ok(new { Expense.Id, Expense.Amount, Expense.Category, Expense.Date, Expense.Note });
     }
 
+    /// <summary>
+    /// Add new expense
+    /// </summary>
+    /// <returns>New expense by Id</returns>
     [HttpPost]
     public ActionResult AddExpense([FromBody] Expense addExpense)
     {
@@ -73,6 +96,10 @@ public class ExpenseController : ControllerBase
         return CreatedAtAction(nameof(GetExpenseById), new { id = addExpense.Id }, new { addExpense.Id, addExpense.Amount, addExpense.Date, addExpense.Note });
     }
 
+        /// <summary>
+    /// Get whole amount of all expenses
+    /// </summary>
+    /// <returns>Whole amount of all expenses</returns>
     [HttpGet("total")]
     public ActionResult<decimal> GetTotalExpenses()
     {
