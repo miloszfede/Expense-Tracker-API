@@ -11,13 +11,10 @@ A comprehensive REST API for managing personal finances, built with ASP.NET Core
   - [Installation](#installation)
   - [Running the Application](#running-the-application)
 - [API Documentation](#api-documentation)
-- [Project Structure](#project-structure)
 - [API Endpoints](#api-endpoints)
 - [Models](#models)
 - [Configuration](#configuration)
 - [Development](#development)
-- [Contributing](#contributing)
-- [License](#license)
 
 ## ✨ Features
 
