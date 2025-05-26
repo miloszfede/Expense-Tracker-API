@@ -1,0 +1,70 @@
+Table "Users" {
+  "InternalId" INT [pk, increment]
+  "Id" UNIQUEIDENTIFIER [not null, unique, default: `NEWID()`]
+  "Username" NVARCHAR(50) [not null, unique]
+  "Email" VARCHAR(100) [not null, unique]
+  "PasswordHash" NVARCHAR(MAX) [not null]
+  "CreatedAt" DATETIME [not null, default: `GETDATE()`]
+  "UpdatedAt" DATETIME [not null, default: `GETDATE()`]
+  
+  indexes {
+    (Username) [unique]
+    (Email) [unique]
+    (Id) [unique]
+  }
+}
+
+Table "Categories" {
+  "InternalId" INT [pk, increment]
+  "Id" UNIQUEIDENTIFIER [not null, unique, default: `NEWID()`]
+  "UserId" UNIQUEIDENTIFIER [null] // NULL for default categories
+  "Name" NVARCHAR(100) [not null]
+  "Type" NVARCHAR(20) [not null] // 'Income' or 'Expense'
+  "IsDefault" BIT [not null, default: false]
+  
+  indexes {
+    (UserId, Name, Type) [unique]
+    (Type, IsDefault)
+    (Id) [unique]
+  }
+}
+
+Table "Incomes" {
+  "InternalId" INT [pk, increment]
+  "Id" UNIQUEIDENTIFIER [not null, unique, default: `NEWID()`]
+  "UserId" UNIQUEIDENTIFIER [not null]
+  "Amount" DECIMAL(18,2) [not null]
+  "Date" DATETIME [not null, default: `GETDATE()`]
+  "Note" NVARCHAR(500)
+  "CategoryId" UNIQUEIDENTIFIER [not null]
+  
+  indexes {
+    (UserId, Date)
+    (Date)
+    (CategoryId)
+    (Id) [unique]
+  }
+}
+
+Table "Expenses" {
+  "InternalId" INT [pk, increment]
+  "Id" UNIQUEIDENTIFIER [not null, unique, default: `NEWID()`]
+  "UserId" UNIQUEIDENTIFIER [not null]
+  "Amount" DECIMAL(18,2) [not null]
+  "Date" DATETIME [not null, default: `GETDATE()`]
+  "Note" NVARCHAR(500)
+  "CategoryId" UNIQUEIDENTIFIER [not null]
+  
+  indexes {
+    (UserId, Date)
+    (Date)
+    (CategoryId)
+    (Id) [unique]
+  }
+}
+
+Ref:"Users"."Id" < "Incomes"."UserId" [delete: cascade]
+Ref:"Users"."Id" < "Expenses"."UserId" [delete: cascade]
+Ref:"Users"."Id" < "Categories"."UserId" [delete: cascade]
+Ref:"Categories"."Id" < "Incomes"."CategoryId" [delete: restrict]
+Ref:"Categories"."Id" < "Expenses"."CategoryId" [delete: restrict]
