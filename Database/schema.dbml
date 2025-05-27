@@ -1,0 +1,99 @@
+CREATE TABLE [Users] (
+  [InternalId] INT PRIMARY KEY IDENTITY(1, 1),
+  [Id] UNIQUEIDENTIFIER UNIQUE NOT NULL DEFAULT (NEWID()),
+  [Username] NVARCHAR(50) UNIQUE NOT NULL,
+  [Email] VARCHAR(100) UNIQUE NOT NULL,
+  [PasswordHash] NVARCHAR(MAX) NOT NULL,
+  [CreatedAt] DATETIME NOT NULL DEFAULT (GETDATE()),
+  [UpdatedAt] DATETIME NOT NULL DEFAULT (GETDATE())
+)
+GO
+
+CREATE TABLE [Categories] (
+  [InternalId] INT PRIMARY KEY IDENTITY(1, 1),
+  [Id] UNIQUEIDENTIFIER UNIQUE NOT NULL DEFAULT (NEWID()),
+  [UserId] UNIQUEIDENTIFIER,
+  [Name] NVARCHAR(100) NOT NULL,
+  [Type] NVARCHAR(20) NOT NULL,
+  [IsDefault] BIT NOT NULL DEFAULT (false)
+)
+GO
+
+CREATE TABLE [Incomes] (
+  [InternalId] INT PRIMARY KEY IDENTITY(1, 1),
+  [Id] UNIQUEIDENTIFIER UNIQUE NOT NULL DEFAULT (NEWID()),
+  [UserId] UNIQUEIDENTIFIER NOT NULL,
+  [Amount] DECIMAL(18,2) NOT NULL,
+  [Date] DATETIME NOT NULL DEFAULT (GETDATE()),
+  [Note] NVARCHAR(500),
+  [CategoryId] UNIQUEIDENTIFIER NOT NULL
+)
+GO
+
+CREATE TABLE [Expenses] (
+  [InternalId] INT PRIMARY KEY IDENTITY(1, 1),
+  [Id] UNIQUEIDENTIFIER UNIQUE NOT NULL DEFAULT (NEWID()),
+  [UserId] UNIQUEIDENTIFIER NOT NULL,
+  [Amount] DECIMAL(18,2) NOT NULL,
+  [Date] DATETIME NOT NULL DEFAULT (GETDATE()),
+  [Note] NVARCHAR(500),
+  [CategoryId] UNIQUEIDENTIFIER NOT NULL
+)
+GO
+
+CREATE UNIQUE INDEX [Users_index_0] ON [Users] ("Username")
+GO
+
+CREATE UNIQUE INDEX [Users_index_1] ON [Users] ("Email")
+GO
+
+CREATE UNIQUE INDEX [Users_index_2] ON [Users] ("Id")
+GO
+
+CREATE UNIQUE INDEX [Categories_index_3] ON [Categories] ("UserId", "Name", "Type")
+GO
+
+CREATE INDEX [Categories_index_4] ON [Categories] ("Type", "IsDefault")
+GO
+
+CREATE UNIQUE INDEX [Categories_index_5] ON [Categories] ("Id")
+GO
+
+CREATE INDEX [Incomes_index_6] ON [Incomes] ("UserId", "Date")
+GO
+
+CREATE INDEX [Incomes_index_7] ON [Incomes] ("Date")
+GO
+
+CREATE INDEX [Incomes_index_8] ON [Incomes] ("CategoryId")
+GO
+
+CREATE UNIQUE INDEX [Incomes_index_9] ON [Incomes] ("Id")
+GO
+
+CREATE INDEX [Expenses_index_10] ON [Expenses] ("UserId", "Date")
+GO
+
+CREATE INDEX [Expenses_index_11] ON [Expenses] ("Date")
+GO
+
+CREATE INDEX [Expenses_index_12] ON [Expenses] ("CategoryId")
+GO
+
+CREATE UNIQUE INDEX [Expenses_index_13] ON [Expenses] ("Id")
+GO
+
+ALTER TABLE [Incomes] ADD FOREIGN KEY ([UserId]) REFERENCES [Users] ([Id]) ON DELETE CASCADE
+GO
+
+ALTER TABLE [Expenses] ADD FOREIGN KEY ([UserId]) REFERENCES [Users] ([Id]) ON DELETE CASCADE
+GO
+
+ALTER TABLE [Categories] ADD FOREIGN KEY ([UserId]) REFERENCES [Users] ([Id]) ON DELETE CASCADE
+GO
+
+ALTER TABLE [Incomes] ADD FOREIGN KEY ([CategoryId]) REFERENCES [Categories] ([Id]) ON DELETE RESTRICT
+GO
+
+ALTER TABLE [Expenses] ADD FOREIGN KEY ([CategoryId]) REFERENCES [Categories] ([Id]) ON DELETE RESTRICT
+GO
