@@ -178,4 +178,3 @@ The project follows standard C# coding conventions.
 - [ ] Unit and integration tests
 
 ---
-
