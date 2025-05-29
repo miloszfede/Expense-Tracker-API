@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using AutoMapper;
 using ExpenseTracker.Application.DTOs;
 using ExpenseTracker.Application.Interfaces;
@@ -50,7 +47,7 @@ namespace ExpenseTracker.Application.Services
             return _mapper.Map<IEnumerable<IncomeDto>>(incomes);
         }
 
-        public async Task<IncomeDto> CreateIncomeAsync(CreateIncomeDto createIncomeDto)
+                public async Task<IncomeDto> CreateIncomeAsync(CreateIncomeDto createIncomeDto)
         {
             var income = _mapper.Map<Income>(createIncomeDto);
             var createdIncome = await _incomeRepository.AddAsync(income);

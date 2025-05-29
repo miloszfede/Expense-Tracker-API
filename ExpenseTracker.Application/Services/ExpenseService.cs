@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using AutoMapper;
 using ExpenseTracker.Application.DTOs;
 using ExpenseTracker.Application.Interfaces;
@@ -50,7 +47,7 @@ namespace ExpenseTracker.Application.Services
             return _mapper.Map<IEnumerable<ExpenseDto>>(expenses);
         }
 
-        public async Task<ExpenseDto> CreateExpenseAsync(CreateExpenseDto createExpenseDto)
+                public async Task<ExpenseDto> CreateExpenseAsync(CreateExpenseDto createExpenseDto)
         {
             var expense = _mapper.Map<Expense>(createExpenseDto);
             var createdExpense = await _expenseRepository.AddAsync(expense);
