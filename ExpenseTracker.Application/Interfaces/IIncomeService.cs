@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using ExpenseTracker.Application.DTOs;
 
 namespace ExpenseTracker.Application.Interfaces

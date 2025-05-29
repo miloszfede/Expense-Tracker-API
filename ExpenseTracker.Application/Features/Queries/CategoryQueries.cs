@@ -1,7 +1,3 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace ExpenseTracker.Application.Features.Queries
 {
     public record GetCategoryByIdQuery
@@ -16,7 +12,7 @@ namespace ExpenseTracker.Application.Features.Queries
 
     public record GetCategoriesByTypeQuery
     {
-        public string Type { get; init; }
+        public required string Type { get; init; }
         public int? UserId { get; init; }
     }
 

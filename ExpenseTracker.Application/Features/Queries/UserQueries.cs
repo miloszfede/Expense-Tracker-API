@@ -1,7 +1,3 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace ExpenseTracker.Application.Features.Queries
 {
     public record GetUserByIdQuery
@@ -11,12 +7,12 @@ namespace ExpenseTracker.Application.Features.Queries
 
     public record GetUserByEmailQuery
     {
-        public string Email { get; init; }
+        public required string Email { get; init; }
     }
 
     public record GetUserByUsernameQuery
     {
-        public string Username { get; init; }
+        public required string Username { get; init; }
     }
 
     public record GetAllUsersQuery

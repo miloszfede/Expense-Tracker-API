@@ -1,7 +1,6 @@
 using AutoMapper;
 using ExpenseTracker.Application.DTOs;
 using ExpenseTracker.Domain.Entities;
-using System;
 
 namespace ExpenseTracker.Application.Mappings
 {
