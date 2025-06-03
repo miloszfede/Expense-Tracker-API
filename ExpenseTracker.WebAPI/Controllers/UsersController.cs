@@ -1,5 +1,7 @@
 using ExpenseTracker.Application.DTOs;
-using ExpenseTracker.Application.Interfaces;
+using ExpenseTracker.Application.Features.Commands;
+using ExpenseTracker.Application.Features.Queries;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ExpenseTracker.WebAPI.Controllers
@@ -8,11 +10,11 @@ namespace ExpenseTracker.WebAPI.Controllers
     [Route("api/[controller]")]
     public class UsersController : ControllerBase
     {
-        private readonly IUserService _userService;
+        private readonly IMediator _mediator;
 
-        public UsersController(IUserService userService)
+        public UsersController(IMediator mediator)
         {
-            _userService = userService;
+            _mediator = mediator;
         }
 
         /// <summary>
@@ -22,7 +24,8 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UserDto>>> GetAll()
         {
-            var users = await _userService.GetAllUsersAsync();
+            var query = new GetAllUsersQuery();
+            var users = await _mediator.Send(query);
             return Ok(users);
         }
 
@@ -34,7 +37,8 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<UserDto>> GetById(int id)
         {
-            var user = await _userService.GetUserByIdAsync(id);
+            var query = new GetUserByIdQuery { Id = id };
+            var user = await _mediator.Send(query);
             if (user == null)
             {
                 return NotFound();
@@ -50,7 +54,13 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<UserDto>> Create([FromBody] CreateUserDto createUserDto)
         {
-            var createdUser = await _userService.CreateUserAsync(createUserDto);
+            var command = new CreateUserCommand 
+            { 
+                Username = createUserDto.Username,
+                Email = createUserDto.Email,
+                Password = createUserDto.Password
+            };
+            var createdUser = await _mediator.Send(command);
             return CreatedAtAction(nameof(GetById), new { id = createdUser.Id }, createdUser);
         }
 
@@ -65,13 +75,36 @@ namespace ExpenseTracker.WebAPI.Controllers
         {
             try
             {
-                var updatedUser = await _userService.UpdateUserAsync(id, updateUserDto);
+                var command = new UpdateUserCommand 
+                { 
+                    Id = id,
+                    Username = updateUserDto.Username,
+                    Email = updateUserDto.Email
+                };
+                var updatedUser = await _mediator.Send(command);
                 return Ok(updatedUser);
             }
             catch (KeyNotFoundException)
             {
                 return NotFound();
             }
+        }
+
+        /// <summary>
+        /// Get user balance (total incomes - total expenses)
+        /// </summary>
+        /// <param name="id">User ID</param>
+        /// <returns>User balance information</returns>
+        [HttpGet("{id}/balance")]
+        public async Task<ActionResult<BalanceDto>> GetBalance(int id)
+        {
+            var query = new GetUserBalanceQuery { UserId = id };
+            var balance = await _mediator.Send(query);
+            if (balance == null)
+            {
+                return NotFound();
+            }
+            return Ok(balance);
         }
 
         /// <summary>
@@ -82,7 +115,12 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(int id)
         {
-            await _userService.DeleteUserAsync(id);
+            var command = new DeleteUserCommand { Id = id };
+            var result = await _mediator.Send(command);
+            if (!result)
+            {
+                return NotFound();
+            }
             return NoContent();
         }
     }

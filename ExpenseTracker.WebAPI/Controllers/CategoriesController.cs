@@ -1,6 +1,9 @@
 using ExpenseTracker.Application.DTOs;
-using ExpenseTracker.Application.Interfaces;
+using ExpenseTracker.Application.Features.Commands;
+using ExpenseTracker.Application.Features.Queries;
 using ExpenseTracker.Domain.Enums;
+using FluentValidation;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ExpenseTracker.WebAPI.Controllers
@@ -9,11 +12,11 @@ namespace ExpenseTracker.WebAPI.Controllers
     [Route("api/[controller]")]
     public class CategoriesController : ControllerBase
     {
-        private readonly ICategoryService _categoryService;
+        private readonly IMediator _mediator;
 
-        public CategoriesController(ICategoryService categoryService)
+        public CategoriesController(IMediator mediator)
         {
-            _categoryService = categoryService;
+            _mediator = mediator;
         }
 
         /// <summary>
@@ -23,7 +26,8 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<CategoryDto>>> GetAll()
         {
-            var categories = await _categoryService.GetAllCategoriesAsync();
+            var query = new GetAllCategoriesQuery();
+            var categories = await _mediator.Send(query);
             return Ok(categories);
         }
 
@@ -35,7 +39,8 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<CategoryDto>> GetById(int id)
         {
-            var category = await _categoryService.GetCategoryByIdAsync(id);
+            var query = new GetCategoryByIdQuery { Id = id };
+            var category = await _mediator.Send(query);
             if (category == null)
             {
                 return NotFound();
@@ -51,7 +56,8 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpGet("user/{userId}")]
         public async Task<ActionResult<IEnumerable<CategoryDto>>> GetByUserId(int userId)
         {
-            var categories = await _categoryService.GetCategoriesByUserIdAsync(userId);
+            var query = new GetCategoriesByUserIdQuery { UserId = userId };
+            var categories = await _mediator.Send(query);
             return Ok(categories);
         }
 
@@ -63,7 +69,8 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpGet("type/{type}")]
         public async Task<ActionResult<IEnumerable<CategoryDto>>> GetByType(CategoryType type)
         {
-            var categories = await _categoryService.GetCategoriesByTypeAsync(type);
+            var query = new GetCategoriesByTypeQuery { Type = type.ToString() };
+            var categories = await _mediator.Send(query);
             return Ok(categories);
         }
 
@@ -75,8 +82,29 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<CategoryDto>> Create([FromBody] CreateCategoryDto createCategoryDto)
         {
-            var createdCategory = await _categoryService.CreateCategoryAsync(createCategoryDto);
-            return CreatedAtAction(nameof(GetById), new { id = createdCategory.Id }, createdCategory);
+            try
+            {
+                var command = new CreateCategoryCommand 
+                { 
+                    Name = createCategoryDto.Name,
+                    Type = createCategoryDto.Type,
+                    UserId = createCategoryDto.UserId,
+                    IsDefault = createCategoryDto.IsDefault
+                };
+                var createdCategory = await _mediator.Send(command);
+                return CreatedAtAction(nameof(GetById), new { id = createdCategory.Id }, createdCategory);
+            }
+            catch (InvalidOperationException ex) when (ex.Message.Contains("already exists"))
+            {
+                return Conflict(new { message = ex.Message });
+            }
+            catch (ValidationException ex)
+            {
+                return BadRequest(new { 
+                    message = "Validation failed", 
+                    errors = ex.Errors.Select(e => new { field = e.PropertyName, error = e.ErrorMessage }) 
+                });
+            }
         }
 
         /// <summary>
@@ -90,7 +118,13 @@ namespace ExpenseTracker.WebAPI.Controllers
         {
             try
             {
-                var updatedCategory = await _categoryService.UpdateCategoryAsync(id, updateCategoryDto);
+                var command = new UpdateCategoryCommand 
+                { 
+                    Id = id,
+                    Name = updateCategoryDto.Name,
+                    IsDefault = updateCategoryDto.IsDefault
+                };
+                var updatedCategory = await _mediator.Send(command);
                 return Ok(updatedCategory);
             }
             catch (KeyNotFoundException)
@@ -107,7 +141,12 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(int id)
         {
-            await _categoryService.DeleteCategoryAsync(id);
+            var command = new DeleteCategoryCommand { Id = id };
+            var result = await _mediator.Send(command);
+            if (!result)
+            {
+                return NotFound();
+            }
             return NoContent();
         }
     }

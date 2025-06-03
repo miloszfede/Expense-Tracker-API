@@ -2,29 +2,29 @@ namespace ExpenseTracker.Application.DTOs
 {
     public class ExpenseDto
     {
-        public int Id { get; set; }
-        public int UserId { get; set; }
-        public decimal Amount { get; set; }
-        public DateTime Date { get; set; }
-        public string Note { get; set; } = string.Empty;
-        public int CategoryId { get; set; }
-        public string CategoryName { get; set; } = string.Empty;
+        public int Id { get; init; }
+        public int UserId { get; init; }
+        public decimal Amount { get; init; }
+        public DateTime Date { get; init; }
+        public string Note { get; init; } = string.Empty;
+        public int CategoryId { get; init; }
+        public string CategoryName { get; init; } = string.Empty;
     }
 
     public class CreateExpenseDto
     {
-        public int UserId { get; set; }
-        public decimal Amount { get; set; }
-        public DateTime Date { get; set; }
-        public string Note { get; set; } = string.Empty;
-        public int CategoryId { get; set; }
+        public int UserId { get; init; }
+        public decimal Amount { get; init; }
+        public DateTime Date { get; init; }
+        public string Note { get; init; } = string.Empty;
+        public int CategoryId { get; init; }
     }
 
     public class UpdateExpenseDto
     {
-        public decimal Amount { get; set; }
-        public DateTime Date { get; set; }
-        public string Note { get; set; } = string.Empty;
-        public int CategoryId { get; set; }
+        public decimal Amount { get; init; }
+        public DateTime Date { get; init; }
+        public string Note { get; init; } = string.Empty;
+        public int CategoryId { get; init; }
     }
 }

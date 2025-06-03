@@ -2,185 +2,107 @@ using Dapper;
 using ExpenseTracker.Domain.Entities;
 using ExpenseTracker.Domain.Enums;
 using ExpenseTracker.Domain.Interfaces;
-using ExpenseTracker.Infrastructure.Data;
+using ExpenseTracker.Infrastructure.Queries;
 
 namespace ExpenseTracker.Infrastructure.Repositories
 {
-    public class CategoryRepository : ICategoryRepository
+    public class CategoryRepository : BaseRepository<Category>, ICategoryRepository
     {
-        private readonly IDbConnectionFactory _connectionFactory;
 
-        public CategoryRepository(IDbConnectionFactory connectionFactory)
+        public override async Task<Category?> GetByIdAsync(int id)
         {
-            _connectionFactory = connectionFactory;
+            var connection = GetConnection();
+            
+            var result = await connection.QueryFirstOrDefaultAsync<Category>(CategoryQueries.GetById, new { Id = id }, GetTransaction());
+            
+            return result;
         }
 
-        public async Task<Category?> GetByIdAsync(int id)
+        public override async Task<IEnumerable<Category>> GetAllAsync()
         {
-            using var connection = _connectionFactory.CreateConnection();
+            var connection = GetConnection();
             
-            const string sql = @"
-                SELECT c.InternalId as Id, c.Id as ExternalId, c.Name, c.Type, c.IsDefault,
-                       u.InternalId as UserId
-                FROM Categories c 
-                LEFT JOIN Users u ON c.UserId = u.Id
-                WHERE c.InternalId = @Id";
-
-            var result = await connection.QueryFirstOrDefaultAsync<dynamic>(sql, new { Id = id });
+            var results = await connection.QueryAsync<Category>(CategoryQueries.GetAll, transaction: GetTransaction());
             
-            if (result == null) return null;
-
-            return new Category
-            {
-                Id = result.Id,
-                ExternalId = result.ExternalId,
-                UserId = result.UserId ?? 0,
-                Name = result.Name,
-                Type = Enum.Parse<CategoryType>(result.Type),
-                IsDefault = result.IsDefault,
-                CreatedAt = DateTime.Now, 
-                UpdatedAt = null
-            };
-        }
-
-        public async Task<IEnumerable<Category>> GetAllAsync()
-        {
-            using var connection = _connectionFactory.CreateConnection();
-            
-            const string sql = @"
-                SELECT c.InternalId as Id, c.Id as ExternalId, c.Name, c.Type, c.IsDefault,
-                       u.InternalId as UserId
-                FROM Categories c 
-                LEFT JOIN Users u ON c.UserId = u.Id
-                ORDER BY c.Name";
-
-            var results = await connection.QueryAsync<dynamic>(sql);
-            
-            return results.Select(result => new Category
-            {
-                Id = result.Id,
-                ExternalId = result.ExternalId,
-                UserId = result.UserId ?? 0,
-                Name = result.Name,
-                Type = Enum.Parse<CategoryType>(result.Type),
-                IsDefault = result.IsDefault,
-                CreatedAt = DateTime.Now, 
-                UpdatedAt = null
-            });
+            return results;
         }
 
         public async Task<IEnumerable<Category>> GetByUserIdAsync(int userId)
         {
-            using var connection = _connectionFactory.CreateConnection();
+            var connection = GetConnection();
             
-            const string sql = @"
-                SELECT c.InternalId as Id, c.Id as ExternalId, c.Name, c.Type, c.IsDefault,
-                       u.InternalId as UserId
-                FROM Categories c 
-                LEFT JOIN Users u ON c.UserId = u.Id
-                WHERE u.InternalId = @UserId OR c.IsDefault = 1
-                ORDER BY c.IsDefault DESC, c.Name";
-
-            var results = await connection.QueryAsync<dynamic>(sql, new { UserId = userId });
+            var results = await connection.QueryAsync<Category>(CategoryQueries.GetByUserId, new { UserId = userId }, GetTransaction());
             
-            return results.Select(result => new Category
-            {
-                Id = result.Id,
-                ExternalId = result.ExternalId,
-                UserId = result.UserId ?? 0,
-                Name = result.Name,
-                Type = Enum.Parse<CategoryType>(result.Type),
-                IsDefault = result.IsDefault,
-                CreatedAt = DateTime.Now, 
-                UpdatedAt = null
-            });
+            return results;
         }
 
         public async Task<IEnumerable<Category>> GetByTypeAsync(CategoryType type)
         {
-            using var connection = _connectionFactory.CreateConnection();
+            var connection = GetConnection();
             
-            const string sql = @"
-                SELECT c.InternalId as Id, c.Id as ExternalId, c.Name, c.Type, c.IsDefault,
-                       u.InternalId as UserId
-                FROM Categories c 
-                LEFT JOIN Users u ON c.UserId = u.Id
-                WHERE c.Type = @Type
-                ORDER BY c.IsDefault DESC, c.Name";
-
-            var results = await connection.QueryAsync<dynamic>(sql, new { Type = type.ToString() });
+            var results = await connection.QueryAsync<Category>(CategoryQueries.GetByType, new { Type = type.ToString() }, GetTransaction());
             
-            return results.Select(result => new Category
-            {
-                Id = result.Id,
-                ExternalId = result.ExternalId,
-                UserId = result.UserId ?? 0,
-                Name = result.Name,
-                Type = Enum.Parse<CategoryType>(result.Type),
-                IsDefault = result.IsDefault,
-                CreatedAt = DateTime.Now, 
-                UpdatedAt = null
-            });
+            return results;
         }
 
-        public async Task<Category> AddAsync(Category category)
+        public async Task<Category?> GetByUserIdNameAndTypeAsync(int userId, string name, CategoryType type)
         {
-            using var connection = _connectionFactory.CreateConnection();
+            var connection = GetConnection();
             
-            if (category.ExternalId == Guid.Empty)
-                category.ExternalId = Guid.NewGuid();
+            var result = await connection.QueryFirstOrDefaultAsync<Category>(
+                CategoryQueries.GetByUserIdNameAndType, 
+                new { UserId = userId, Name = name, Type = type.ToString() }, 
+                GetTransaction());
             
-            category.CreatedAt = DateTime.Now;
-            category.UpdatedAt = category.CreatedAt;
+            return result;
+        }
 
-            const string getUserIdSql = "SELECT Id FROM Users WHERE InternalId = @UserId";
-            var userExternalId = await connection.QueryFirstOrDefaultAsync<Guid?>(getUserIdSql, new { UserId = category.UserId });
+        public override async Task<Category> AddAsync(Category category)
+        {
+            var connection = GetConnection();
 
-            const string sql = @"
-                INSERT INTO Categories (Id, UserId, Name, Type, IsDefault)
-                OUTPUT INSERTED.InternalId
-                VALUES (@ExternalId, @UserExternalId, @Name, @Type, @IsDefault)";
+            var externalId = Guid.NewGuid();
 
-            category.Id = await connection.QuerySingleAsync<int>(sql, new
+            var id = await connection.QuerySingleAsync<int>(CategoryQueries.Insert, new
             {
-                category.ExternalId,
-                UserExternalId = userExternalId,
-                category.Name,
+                ExternalId = externalId,
+                UserId = category.UserId,
+                Name = category.Name,
                 Type = category.Type.ToString(),
-                category.IsDefault
-            });
+                IsDefault = category.IsDefault
+            }, GetTransaction());
 
-            return category;
+            var newCategory = new Category 
+            { 
+                UserId = category.UserId,
+                Name = category.Name,
+                IsDefault = category.IsDefault
+            };
+            newCategory.SetId(id);
+            newCategory.SetExternalId(externalId);
+            newCategory.UpdateType(category.Type);
+            
+            return newCategory;
         }
 
-        public async Task UpdateAsync(Category category)
+        public override async Task UpdateAsync(Category category)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            
-            category.UpdatedAt = DateTime.Now;
+            var connection = GetConnection();
 
-            const string sql = @"
-                UPDATE Categories 
-                SET Name = @Name, 
-                    Type = @Type, 
-                    IsDefault = @IsDefault
-                WHERE InternalId = @Id";
-
-            await connection.ExecuteAsync(sql, new
+            await connection.ExecuteAsync(CategoryQueries.Update, new
             {
                 category.Name,
                 Type = category.Type.ToString(),
                 category.IsDefault,
                 category.Id
-            });
+            }, GetTransaction());
         }
 
-        public async Task DeleteAsync(int id)
+        public override async Task DeleteAsync(int id)
         {
-            using var connection = _connectionFactory.CreateConnection();
+            var connection = GetConnection();
             
-            const string sql = "DELETE FROM Categories WHERE InternalId = @Id";
-            await connection.ExecuteAsync(sql, new { Id = id });
+            await connection.ExecuteAsync(CategoryQueries.Delete, new { Id = id }, GetTransaction());
         }
     }
 }

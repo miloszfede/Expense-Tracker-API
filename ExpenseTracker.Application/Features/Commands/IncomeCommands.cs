@@ -1,6 +1,9 @@
+using ExpenseTracker.Application.DTOs;
+using MediatR;
+
 namespace ExpenseTracker.Application.Features.Commands
 {
-    public record CreateIncomeCommand
+    public record CreateIncomeCommand : IRequest<IncomeDto>
     {
         public decimal Amount { get; init; }
         public DateTime Date { get; init; }
@@ -9,7 +12,7 @@ namespace ExpenseTracker.Application.Features.Commands
         public int UserId { get; init; }
     }
 
-    public record UpdateIncomeCommand
+    public record UpdateIncomeCommand : IRequest<IncomeDto>
     {
         public int Id { get; init; }
         public decimal Amount { get; init; }
@@ -18,7 +21,7 @@ namespace ExpenseTracker.Application.Features.Commands
         public int CategoryId { get; init; }
     }
 
-    public record DeleteIncomeCommand
+    public record DeleteIncomeCommand : IRequest<bool>
     {
         public int Id { get; init; }
     }

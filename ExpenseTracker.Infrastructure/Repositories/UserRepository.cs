@@ -1,105 +1,87 @@
 using Dapper;
 using ExpenseTracker.Domain.Entities;
 using ExpenseTracker.Domain.Interfaces;
-using ExpenseTracker.Infrastructure.Data;
+using ExpenseTracker.Infrastructure.Queries;
 
 namespace ExpenseTracker.Infrastructure.Repositories
 {
-    public class UserRepository : IUserRepository
+    public class UserRepository : BaseRepository<User>, IUserRepository
     {
-        private readonly IDbConnectionFactory _connectionFactory;
-
-        public UserRepository(IDbConnectionFactory connectionFactory)
+        public override async Task<User?> GetByIdAsync(int id)
         {
-            _connectionFactory = connectionFactory;
+            var connection = GetConnection();
+            return await connection.QueryFirstOrDefaultAsync<User>(UserQueries.GetById, new { Id = id }, GetTransaction());
         }
 
-        public async Task<User?> GetByIdAsync(int id)
+        public override async Task<IEnumerable<User>> GetAllAsync()
         {
-            using var connection = _connectionFactory.CreateConnection();
-            
-            const string sql = @"
-                SELECT InternalId as Id, Id as ExternalId, Username, Email, PasswordHash, CreatedAt, UpdatedAt 
-                FROM Users 
-                WHERE InternalId = @Id";
-
-            return await connection.QueryFirstOrDefaultAsync<User>(sql, new { Id = id });
+            var connection = GetConnection();
+            return await connection.QueryAsync<User>(UserQueries.GetAll, transaction: GetTransaction());
         }
 
-        public async Task<IEnumerable<User>> GetAllAsync()
+        public override async Task<User> AddAsync(User user)
         {
-            using var connection = _connectionFactory.CreateConnection();
-            
-            const string sql = @"
-                SELECT InternalId as Id, Id as ExternalId, Username, Email, PasswordHash, CreatedAt, UpdatedAt 
-                FROM Users 
-                ORDER BY CreatedAt DESC";
-
-            return await connection.QueryAsync<User>(sql);
-        }
-
-        public async Task<User> AddAsync(User user)
-        {
-            using var connection = _connectionFactory.CreateConnection();
+            var connection = GetConnection();
             
             var externalId = Guid.NewGuid();
-            
-            user.CreatedAt = DateTime.Now;
-            user.UpdatedAt = user.CreatedAt;
+            var now = DateTime.Now;
 
-            const string sql = @"
-                INSERT INTO Users (Id, Username, Email, PasswordHash, CreatedAt, UpdatedAt)
-                OUTPUT INSERTED.InternalId
-                VALUES (@ExternalId, @Username, @Email, @PasswordHash, @CreatedAt, @UpdatedAt)";
-
-            user.Id = await connection.QuerySingleAsync<int>(sql, new {
+            var id = await connection.QuerySingleAsync<int>(UserQueries.Insert, new {
                 ExternalId = externalId,
                 Username = user.Username,
                 Email = user.Email,
                 PasswordHash = user.PasswordHash,
-                CreatedAt = user.CreatedAt,
-                UpdatedAt = user.UpdatedAt
-            });
+                CreatedAt = now,
+                UpdatedAt = now
+            }, GetTransaction());
             
-            user.ExternalId = externalId;
-            return user;
+            var newUser = new User
+            {
+                Username = user.Username,
+                Email = user.Email,
+            };
+            newUser.SetId(id);
+            newUser.SetExternalId(externalId);
+            newUser.SetTimestamps(now, now);
+            newUser.UpdatePassword(user.PasswordHash);
+            
+            return newUser;
         }
 
-        public async Task UpdateAsync(User user)
+        public override async Task UpdateAsync(User user)
         {
-            using var connection = _connectionFactory.CreateConnection();
+            var connection = GetConnection();
             
-            user.UpdatedAt = DateTime.Now;
+            user.UpdateTimestamp();
 
-            const string sql = @"
-                UPDATE Users 
-                SET Username = @Username, 
-                    Email = @Email, 
-                    PasswordHash = @PasswordHash, 
-                    UpdatedAt = @UpdatedAt
-                WHERE InternalId = @Id";
-
-            await connection.ExecuteAsync(sql, user);
+            await connection.ExecuteAsync(UserQueries.Update, new {
+                user.Id,
+                user.Username,
+                user.Email,
+                user.PasswordHash,
+                user.UpdatedAt
+            }, GetTransaction());
         }
 
-        public async Task DeleteAsync(int id)
+        public override async Task DeleteAsync(int id)
         {
-            using var connection = _connectionFactory.CreateConnection();
+            var connection = GetConnection();
             
-            const string sql = "DELETE FROM Users WHERE InternalId = @Id";
-            await connection.ExecuteAsync(sql, new { Id = id });
+            await connection.ExecuteAsync(UserQueries.Delete, new { Id = id }, GetTransaction());
         }
 
         public async Task<User?> GetByEmailAsync(string email)
         {
-            using var connection = _connectionFactory.CreateConnection();
+            var connection = GetConnection();
             
-            const string sql = @"
-                SELECT InternalId as Id, Id as ExternalId, Username, Email, PasswordHash, CreatedAt, UpdatedAt 
-                FROM Users 
-                WHERE Email = @Email";
+            return await connection.QueryFirstOrDefaultAsync<User>(UserQueries.GetByEmail, new { Email = email }, GetTransaction());
+        }
 
-            return await connection.QueryFirstOrDefaultAsync<User>(sql, new { Email = email });
+        public async Task<User?> GetByUsernameAsync(string username)
+        {
+            var connection = GetConnection();
+            
+            return await connection.QueryFirstOrDefaultAsync<User>(UserQueries.GetByUsername, new { Username = username }, GetTransaction());
         }
     }
 }
