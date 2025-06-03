@@ -1,11 +1,14 @@
 using ExpenseTracker.Application.Dependencies;
 using ExpenseTracker.Domain.Dependencies;
 using ExpenseTracker.Infrastructure.Dependencies;
+using FluentValidation.AspNetCore;
 using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddFluentValidationAutoValidation()
+    .AddFluentValidationClientsideAdapters();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {

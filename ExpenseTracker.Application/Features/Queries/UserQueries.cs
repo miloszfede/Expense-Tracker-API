@@ -1,25 +1,24 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+using ExpenseTracker.Application.DTOs;
+using MediatR;
 
 namespace ExpenseTracker.Application.Features.Queries
 {
-    public record GetUserByIdQuery
+    public record GetUserByIdQuery : IRequest<UserDto?>
     {
         public int Id { get; init; }
     }
 
-    public record GetUserByEmailQuery
+    public record GetUserByEmailQuery : IRequest<UserDto?>
     {
-        public string Email { get; init; }
+        public required string Email { get; init; }
     }
 
-    public record GetUserByUsernameQuery
+    public record GetUserByUsernameQuery : IRequest<UserDto?>
     {
-        public string Username { get; init; }
+        public required string Username { get; init; }
     }
 
-    public record GetAllUsersQuery
+    public record GetAllUsersQuery : IRequest<IEnumerable<UserDto>>
     {
     }
 }

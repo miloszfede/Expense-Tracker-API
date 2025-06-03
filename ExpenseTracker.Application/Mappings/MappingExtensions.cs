@@ -1,37 +1,35 @@
 using AutoMapper;
-using ExpenseTracker.Application.DTOs;
-using ExpenseTracker.Domain.Entities;
-using System;
+using ExpenseTracker.Domain.Enums;
 
 namespace ExpenseTracker.Application.Mappings
 {
     public static class MappingExtensions
     {
-        public static readonly MapperConfiguration MappingConfiguration = new MapperConfiguration(cfg =>
+        public static IMappingExpression<TSource, TDestination> IgnoreBaseEntityProperties<TSource, TDestination>(
+            this IMappingExpression<TSource, TDestination> expression)
         {
-            cfg.CreateMap<User, UserDto>();
-            cfg.CreateMap<CreateUserDto, User>();
-            cfg.CreateMap<UpdateUserDto, User>();
+            return expression
+                .ForMember("Id", opt => opt.Ignore());
+        }
 
-            cfg.CreateMap<Category, CategoryDto>()
-                .ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.Type.ToString()));
-            cfg.CreateMap<CreateCategoryDto, Category>();
-            cfg.CreateMap<UpdateCategoryDto, Category>();
-
-            cfg.CreateMap<Expense, ExpenseDto>()
-                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.Name : string.Empty));
-            cfg.CreateMap<CreateExpenseDto, Expense>();
-            cfg.CreateMap<UpdateExpenseDto, Expense>();
-
-            cfg.CreateMap<Income, IncomeDto>()
-                .ForMember(dest => dest.CategoryName, opt => opt.MapFrom(src => src.Category != null ? src.Category.Name : string.Empty));
-            cfg.CreateMap<CreateIncomeDto, Income>();
-            cfg.CreateMap<UpdateIncomeDto, Income>();
-        });
-
-        public static IMapper CreateMapper()
+        public static IMappingExpression<TSource, TDestination> IgnoreUserAuditProperties<TSource, TDestination>(
+            this IMappingExpression<TSource, TDestination> expression)
         {
-            return MappingConfiguration.CreateMapper();
+            return expression
+                .ForMember("Id", opt => opt.Ignore())
+                .ForMember("CreatedAt", opt => opt.Ignore())
+                .ForMember("UpdatedAt", opt => opt.Ignore());
+        }
+        
+        public static CategoryType ToCategoryType(this string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                throw new ArgumentException("Category type cannot be null or empty", nameof(value));
+
+            if (Enum.TryParse<CategoryType>(value, ignoreCase: true, out var result))
+                return result;
+
+            throw new ArgumentException($"Invalid category type: {value}", nameof(value));
         }
     }
 }

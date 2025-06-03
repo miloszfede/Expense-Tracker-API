@@ -1,8 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using ExpenseTracker.Application.DTOs;
-using ExpenseTracker.Application.Interfaces;
+using ExpenseTracker.Application.Features.Commands;
+using ExpenseTracker.Application.Features.Queries;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ExpenseTracker.WebAPI.Controllers
@@ -11,11 +10,11 @@ namespace ExpenseTracker.WebAPI.Controllers
     [Route("api/[controller]")]
     public class ExpensesController : ControllerBase
     {
-        private readonly IExpenseService _expenseService;
+        private readonly IMediator _mediator;
 
-        public ExpensesController(IExpenseService expenseService)
+        public ExpensesController(IMediator mediator)
         {
-            _expenseService = expenseService;
+            _mediator = mediator;
         }
 
         /// <summary>
@@ -25,7 +24,8 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ExpenseDto>>> GetAll()
         {
-            var expenses = await _expenseService.GetAllExpensesAsync();
+            var query = new GetAllExpensesQuery();
+            var expenses = await _mediator.Send(query);
             return Ok(expenses);
         }
 
@@ -37,7 +37,8 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<ExpenseDto>> GetById(int id)
         {
-            var expense = await _expenseService.GetExpenseByIdAsync(id);
+            var query = new GetExpenseByIdQuery { Id = id };
+            var expense = await _mediator.Send(query);
             if (expense == null)
             {
                 return NotFound();
@@ -53,36 +54,37 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpGet("user/{userId}")]
         public async Task<ActionResult<IEnumerable<ExpenseDto>>> GetByUserId(int userId)
         {
-            var expenses = await _expenseService.GetExpensesByUserIdAsync(userId);
+            var query = new GetExpensesByUserIdQuery { UserId = userId };
+            var expenses = await _mediator.Send(query);
             return Ok(expenses);
         }
 
         /// <summary>
-        /// Get expenses by category ID
-        /// </summary>
-        /// <param name="categoryId">Category ID</param>
-        /// <returns>List of expenses for specified category</returns>
-        [HttpGet("category/{categoryId}")]
-        public async Task<ActionResult<IEnumerable<ExpenseDto>>> GetByCategoryId(int categoryId)
-        {
-            var expenses = await _expenseService.GetExpensesByCategoryIdAsync(categoryId);
-            return Ok(expenses);
-        }
-
-        /// <summary>
-        /// Get expenses by date range for a specific user
+        /// Get expenses by category
         /// </summary>
         /// <param name="userId">User ID</param>
-        /// <param name="startDate">Start date of the range</param>
-        /// <param name="endDate">End date of the range</param>
-        /// <returns>List of expenses within the specified date range</returns>
-        [HttpGet("user/{userId}/daterange")]
-        public async Task<ActionResult<IEnumerable<ExpenseDto>>> GetByDateRange(
-            int userId,
-            [FromQuery] DateTime startDate,
-            [FromQuery] DateTime endDate)
+        /// <param name="categoryId">Category ID</param>
+        /// <returns>List of expenses for specified category</returns>
+        [HttpGet("user/{userId}/category/{categoryId}")]
+        public async Task<ActionResult<IEnumerable<ExpenseDto>>> GetByCategory(int userId, int categoryId)
         {
-            var expenses = await _expenseService.GetExpensesByDateRangeAsync(userId, startDate, endDate);
+            var query = new GetExpensesByCategoryQuery { UserId = userId, CategoryId = categoryId };
+            var expenses = await _mediator.Send(query);
+            return Ok(expenses);
+        }
+
+        /// <summary>
+        /// Get expenses by date range
+        /// </summary>
+        /// <param name="userId">User ID</param>
+        /// <param name="startDate">Start date</param>
+        /// <param name="endDate">End date</param>
+        /// <returns>List of expenses in specified date range</returns>
+        [HttpGet("user/{userId}/daterange")]
+        public async Task<ActionResult<IEnumerable<ExpenseDto>>> GetByDateRange(int userId, [FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
+        {
+            var query = new GetExpensesByDateRangeQuery { UserId = userId, StartDate = startDate, EndDate = endDate };
+            var expenses = await _mediator.Send(query);
             return Ok(expenses);
         }
 
@@ -94,7 +96,15 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<ExpenseDto>> Create([FromBody] CreateExpenseDto createExpenseDto)
         {
-            var createdExpense = await _expenseService.CreateExpenseAsync(createExpenseDto);
+            var command = new CreateExpenseCommand 
+            { 
+                Amount = createExpenseDto.Amount,
+                Date = createExpenseDto.Date,
+                Note = createExpenseDto.Note,
+                CategoryId = createExpenseDto.CategoryId,
+                UserId = createExpenseDto.UserId
+            };
+            var createdExpense = await _mediator.Send(command);
             return CreatedAtAction(nameof(GetById), new { id = createdExpense.Id }, createdExpense);
         }
 
@@ -109,7 +119,15 @@ namespace ExpenseTracker.WebAPI.Controllers
         {
             try
             {
-                var updatedExpense = await _expenseService.UpdateExpenseAsync(id, updateExpenseDto);
+                var command = new UpdateExpenseCommand 
+                { 
+                    Id = id,
+                    Amount = updateExpenseDto.Amount,
+                    Date = updateExpenseDto.Date,
+                    Note = updateExpenseDto.Note,
+                    CategoryId = updateExpenseDto.CategoryId
+                };
+                var updatedExpense = await _mediator.Send(command);
                 return Ok(updatedExpense);
             }
             catch (KeyNotFoundException)
@@ -126,7 +144,12 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(int id)
         {
-            await _expenseService.DeleteExpenseAsync(id);
+            var command = new DeleteExpenseCommand { Id = id };
+            var result = await _mediator.Send(command);
+            if (!result)
+            {
+                return NotFound();
+            }
             return NoContent();
         }
     }

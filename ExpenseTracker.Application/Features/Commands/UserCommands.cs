@@ -1,25 +1,23 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using ExpenseTracker.Domain.Entities;
+using ExpenseTracker.Application.DTOs;
+using MediatR;
 
 namespace ExpenseTracker.Application.Features.Commands
 {
-    public record CreateUserCommand
+    public record CreateUserCommand : IRequest<UserDto>
     {
-        public string Username { get; init; }
-        public string Email { get; init; }
-        public string Password { get; init; }
+        public required string Username { get; init; }
+        public required string Email { get; init; }
+        public required string Password { get; init; }
     }
 
-    public record UpdateUserCommand
+    public record UpdateUserCommand : IRequest<UserDto>
     {
         public int Id { get; init; }
-        public string Username { get; init; }
-        public string Email { get; init; }
+        public required string Username { get; init; }
+        public required string Email { get; init; }
     }
 
-    public record DeleteUserCommand
+    public record DeleteUserCommand : IRequest<bool>
     {
         public int Id { get; init; }
     }

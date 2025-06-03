@@ -1,7 +1,5 @@
-using ExpenseTracker.Application.Interfaces;
-using ExpenseTracker.Application.Services;
+using FluentValidation;
 using Microsoft.Extensions.DependencyInjection;
-using AutoMapper;
 using System.Reflection;
 
 namespace ExpenseTracker.Application.Dependencies
@@ -11,12 +9,9 @@ namespace ExpenseTracker.Application.Dependencies
         public static IServiceCollection AddApplicationDependencies(this IServiceCollection services)
         {
             services.AddAutoMapper(Assembly.GetExecutingAssembly());
-            
-            services.AddScoped<IUserService, UserService>();
-            services.AddScoped<ICategoryService, CategoryService>();
-            services.AddScoped<IExpenseService, ExpenseService>();
-            services.AddScoped<IIncomeService, IncomeService>();
-            
+            services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+            services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly()));
+
             return services;
         }
     }
