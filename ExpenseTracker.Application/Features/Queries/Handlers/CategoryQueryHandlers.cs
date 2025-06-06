@@ -1,52 +1,44 @@
 using AutoMapper;
 using ExpenseTracker.Application.DTOs;
+using ExpenseTracker.Domain.Entities;
 using ExpenseTracker.Domain.Enums;
 using ExpenseTracker.Domain.Interfaces;
-using MediatR;
 
 namespace ExpenseTracker.Application.Features.Queries.Handlers
 {
     public class GetCategoryByIdQueryHandler(IUnitOfWork unitOfWork, IMapper mapper)
-        : IRequestHandler<GetCategoryByIdQuery, CategoryDto?>
+        : BaseGetByIdQueryHandler<GetCategoryByIdQuery, CategoryDto, Category>(unitOfWork, mapper)
     {
-        public async Task<CategoryDto?> Handle(GetCategoryByIdQuery request, CancellationToken cancellationToken)
-        {
-            var category = await unitOfWork.Categories.GetByIdAsync(request.Id);
-            return category == null ? null : mapper.Map<CategoryDto>(category);
-        }
+        protected override int GetEntityId(GetCategoryByIdQuery query) => query.Id;
+        
+        protected override async Task<Category?> GetEntityByIdAsync(int id) => 
+            await UnitOfWork.Categories.GetByIdAsync(id);
     }
 
     public class GetCategoriesByUserIdQueryHandler(IUnitOfWork unitOfWork, IMapper mapper)
-        : IRequestHandler<GetCategoriesByUserIdQuery, IEnumerable<CategoryDto>>
+        : BaseGetCollectionQueryHandler<GetCategoriesByUserIdQuery, CategoryDto, Category>(unitOfWork, mapper)
     {
-        public async Task<IEnumerable<CategoryDto>> Handle(GetCategoriesByUserIdQuery request, CancellationToken cancellationToken)
-        {
-            var categories = await unitOfWork.Categories.GetByUserIdAsync(request.UserId);
-            return mapper.Map<IEnumerable<CategoryDto>>(categories);
-        }
+        protected override async Task<IEnumerable<Category>> GetEntitiesAsync(GetCategoriesByUserIdQuery query) =>
+            await UnitOfWork.Categories.GetByUserIdAsync(query.UserId);
     }
 
     public class GetCategoriesByTypeQueryHandler(IUnitOfWork unitOfWork, IMapper mapper)
-        : IRequestHandler<GetCategoriesByTypeQuery, IEnumerable<CategoryDto>>
+        : BaseGetCollectionQueryHandler<GetCategoriesByTypeQuery, CategoryDto, Category>(unitOfWork, mapper)
     {
-        public async Task<IEnumerable<CategoryDto>> Handle(GetCategoriesByTypeQuery request, CancellationToken cancellationToken)
+        protected override async Task<IEnumerable<Category>> GetEntitiesAsync(GetCategoriesByTypeQuery query)
         {
-            if (Enum.TryParse<CategoryType>(request.Type, out var categoryType))
+            if (Enum.TryParse<CategoryType>(query.Type, out var categoryType))
             {
-                var categories = await unitOfWork.Categories.GetByTypeAsync(categoryType);
-                return mapper.Map<IEnumerable<CategoryDto>>(categories);
+                return await UnitOfWork.Categories.GetByTypeAsync(categoryType);
             }
             return [];
         }
     }
 
     public class GetAllCategoriesQueryHandler(IUnitOfWork unitOfWork, IMapper mapper)
-        : IRequestHandler<GetAllCategoriesQuery, IEnumerable<CategoryDto>>
+        : BaseGetCollectionQueryHandler<GetAllCategoriesQuery, CategoryDto, Category>(unitOfWork, mapper)
     {
-        public async Task<IEnumerable<CategoryDto>> Handle(GetAllCategoriesQuery request, CancellationToken cancellationToken)
-        {
-            var categories = await unitOfWork.Categories.GetAllAsync();
-            return mapper.Map<IEnumerable<CategoryDto>>(categories);
-        }
+        protected override async Task<IEnumerable<Category>> GetEntitiesAsync(GetAllCategoriesQuery query) =>
+            await UnitOfWork.Categories.GetAllAsync();
     }
 }

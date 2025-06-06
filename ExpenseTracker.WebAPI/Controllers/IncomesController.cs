@@ -2,12 +2,14 @@ using ExpenseTracker.Application.DTOs;
 using ExpenseTracker.Application.Features.Commands;
 using ExpenseTracker.Application.Features.Queries;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ExpenseTracker.WebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class IncomesController : ControllerBase
     {
         private readonly IMediator _mediator;
@@ -18,10 +20,11 @@ namespace ExpenseTracker.WebAPI.Controllers
         }
 
         /// <summary>
-        /// Get all incomes
+        /// Get all incomes (Admin only)
         /// </summary>
         /// <returns>List of all incomes</returns>
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IEnumerable<IncomeDto>>> GetAll()
         {
             var query = new GetAllIncomesQuery();
