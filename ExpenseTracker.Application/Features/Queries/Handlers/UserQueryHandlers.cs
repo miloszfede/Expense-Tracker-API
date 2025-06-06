@@ -1,18 +1,18 @@
 using AutoMapper;
 using ExpenseTracker.Application.DTOs;
+using ExpenseTracker.Domain.Entities;
 using ExpenseTracker.Domain.Interfaces;
 using MediatR;
 
 namespace ExpenseTracker.Application.Features.Queries.Handlers
 {
     public class GetUserByIdQueryHandler(IUnitOfWork unitOfWork, IMapper mapper)
-        : IRequestHandler<GetUserByIdQuery, UserDto?>
+        : BaseGetByIdQueryHandler<GetUserByIdQuery, UserDto, User>(unitOfWork, mapper)
     {
-        public async Task<UserDto?> Handle(GetUserByIdQuery request, CancellationToken cancellationToken)
-        {
-            var user = await unitOfWork.Users.GetByIdAsync(request.Id);
-            return user == null ? null : mapper.Map<UserDto>(user);
-        }
+        protected override int GetEntityId(GetUserByIdQuery query) => query.Id;
+        
+        protected override async Task<User?> GetEntityByIdAsync(int id) => 
+            await UnitOfWork.Users.GetByIdAsync(id);
     }
 
     public class GetUserByEmailQueryHandler(IUnitOfWork unitOfWork, IMapper mapper)
@@ -36,12 +36,9 @@ namespace ExpenseTracker.Application.Features.Queries.Handlers
     }
 
     public class GetAllUsersQueryHandler(IUnitOfWork unitOfWork, IMapper mapper)
-        : IRequestHandler<GetAllUsersQuery, IEnumerable<UserDto>>
+        : BaseGetCollectionQueryHandler<GetAllUsersQuery, UserDto, User>(unitOfWork, mapper)
     {
-        public async Task<IEnumerable<UserDto>> Handle(GetAllUsersQuery request, CancellationToken cancellationToken)
-        {
-            var users = await unitOfWork.Users.GetAllAsync();
-            return mapper.Map<IEnumerable<UserDto>>(users);
-        }
+        protected override async Task<IEnumerable<User>> GetEntitiesAsync(GetAllUsersQuery query) =>
+            await UnitOfWork.Users.GetAllAsync();
     }
 }

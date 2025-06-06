@@ -5,7 +5,6 @@ namespace ExpenseTracker.Application.Validators
 {
     public static class BaseValidators
     {
-
         public static IRuleBuilderOptions<T, decimal> ValidateAmount<T>(this IRuleBuilder<T, decimal> ruleBuilder)
         {
             return ruleBuilder
@@ -15,7 +14,8 @@ namespace ExpenseTracker.Application.Validators
                 .WithMessage("Amount cannot exceed 999,999.99");
         }
 
-        public static IRuleBuilderOptions<T, DateTime> ValidateTransactionDate<T>(this IRuleBuilder<T, DateTime> ruleBuilder)
+        public static IRuleBuilderOptions<T, DateTime> ValidateTransactionDate<T>(
+            this IRuleBuilder<T, DateTime> ruleBuilder)
         {
             return ruleBuilder
                 .NotEmpty()
@@ -53,7 +53,8 @@ namespace ExpenseTracker.Application.Validators
                 .WithMessage("Category type must be either 'Income' or 'Expense'");
         }
 
-        public static IRuleBuilderOptions<T, int> ValidatePositiveId<T>(this IRuleBuilder<T, int> ruleBuilder, string entityName)
+        public static IRuleBuilderOptions<T, int> ValidatePositiveId<T>(this IRuleBuilder<T, int> ruleBuilder,
+            string entityName)
         {
             return ruleBuilder
                 .GreaterThan(0)

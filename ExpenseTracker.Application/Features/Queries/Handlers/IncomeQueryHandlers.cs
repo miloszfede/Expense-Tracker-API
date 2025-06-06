@@ -1,57 +1,44 @@
 using AutoMapper;
 using ExpenseTracker.Application.DTOs;
+using ExpenseTracker.Domain.Entities;
 using ExpenseTracker.Domain.Interfaces;
-using MediatR;
 
 namespace ExpenseTracker.Application.Features.Queries.Handlers
 {
     public class GetIncomeByIdQueryHandler(IUnitOfWork unitOfWork, IMapper mapper)
-        : IRequestHandler<GetIncomeByIdQuery, IncomeDto?>
+        : BaseGetByIdQueryHandler<GetIncomeByIdQuery, IncomeDto, Income>(unitOfWork, mapper)
     {
-        public async Task<IncomeDto?> Handle(GetIncomeByIdQuery request, CancellationToken cancellationToken)
-        {
-            var income = await unitOfWork.Incomes.GetByIdAsync(request.Id);
-            return income != null ? mapper.Map<IncomeDto>(income) : null;
-        }
+        protected override int GetEntityId(GetIncomeByIdQuery query) => query.Id;
+        
+        protected override async Task<Income?> GetEntityByIdAsync(int id) => 
+            await UnitOfWork.Incomes.GetByIdAsync(id);
     }
 
     public class GetIncomesByUserIdQueryHandler(IUnitOfWork unitOfWork, IMapper mapper)
-        : IRequestHandler<GetIncomesByUserIdQuery, IEnumerable<IncomeDto>>
+        : BaseGetCollectionQueryHandler<GetIncomesByUserIdQuery, IncomeDto, Income>(unitOfWork, mapper)
     {
-        public async Task<IEnumerable<IncomeDto>> Handle(GetIncomesByUserIdQuery request, CancellationToken cancellationToken)
-        {
-            var incomes = await unitOfWork.Incomes.GetByUserIdAsync(request.UserId);
-            return mapper.Map<IEnumerable<IncomeDto>>(incomes);
-        }
+        protected override async Task<IEnumerable<Income>> GetEntitiesAsync(GetIncomesByUserIdQuery query) =>
+            await UnitOfWork.Incomes.GetByUserIdAsync(query.UserId);
     }
 
     public class GetIncomesByDateRangeQueryHandler(IUnitOfWork unitOfWork, IMapper mapper)
-        : IRequestHandler<GetIncomesByDateRangeQuery, IEnumerable<IncomeDto>>
+        : BaseGetCollectionQueryHandler<GetIncomesByDateRangeQuery, IncomeDto, Income>(unitOfWork, mapper)
     {
-        public async Task<IEnumerable<IncomeDto>> Handle(GetIncomesByDateRangeQuery request, CancellationToken cancellationToken)
-        {
-            var incomes = await unitOfWork.Incomes.GetByDateRangeAsync(request.UserId, request.StartDate, request.EndDate);
-            return mapper.Map<IEnumerable<IncomeDto>>(incomes);
-        }
+        protected override async Task<IEnumerable<Income>> GetEntitiesAsync(GetIncomesByDateRangeQuery query) =>
+            await UnitOfWork.Incomes.GetByDateRangeAsync(query.UserId, query.StartDate, query.EndDate);
     }
 
     public class GetIncomesByCategoryQueryHandler(IUnitOfWork unitOfWork, IMapper mapper)
-        : IRequestHandler<GetIncomesByCategoryQuery, IEnumerable<IncomeDto>>
+        : BaseGetCollectionQueryHandler<GetIncomesByCategoryQuery, IncomeDto, Income>(unitOfWork, mapper)
     {
-        public async Task<IEnumerable<IncomeDto>> Handle(GetIncomesByCategoryQuery request, CancellationToken cancellationToken)
-        {
-            var incomes = await unitOfWork.Incomes.GetByCategoryIdAsync(request.CategoryId);
-            return mapper.Map<IEnumerable<IncomeDto>>(incomes);
-        }
+        protected override async Task<IEnumerable<Income>> GetEntitiesAsync(GetIncomesByCategoryQuery query) =>
+            await UnitOfWork.Incomes.GetByCategoryIdAsync(query.CategoryId);
     }
 
     public class GetAllIncomesQueryHandler(IUnitOfWork unitOfWork, IMapper mapper)
-        : IRequestHandler<GetAllIncomesQuery, IEnumerable<IncomeDto>>
+        : BaseGetCollectionQueryHandler<GetAllIncomesQuery, IncomeDto, Income>(unitOfWork, mapper)
     {
-        public async Task<IEnumerable<IncomeDto>> Handle(GetAllIncomesQuery request, CancellationToken cancellationToken)
-        {
-            var incomes = await unitOfWork.Incomes.GetAllAsync();
-            return mapper.Map<IEnumerable<IncomeDto>>(incomes);
-        }
+        protected override async Task<IEnumerable<Income>> GetEntitiesAsync(GetAllIncomesQuery query) =>
+            await UnitOfWork.Incomes.GetAllAsync();
     }
 }

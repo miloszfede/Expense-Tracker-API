@@ -14,13 +14,11 @@ namespace ExpenseTracker.Application.Features.Queries.Handlers
             {
                 return null;
             }
-
+            
             var incomes = await unitOfWork.Incomes.GetByUserIdAsync(request.UserId);
             var totalIncomes = incomes?.Sum(i => i.Amount) ?? 0m;
-            
             var expenses = await unitOfWork.Expenses.GetByUserIdAsync(request.UserId);
             var totalExpenses = expenses?.Sum(e => e.Amount) ?? 0m;
-            
             var balance = totalIncomes - totalExpenses;
 
             return new BalanceDto

@@ -3,6 +3,7 @@ namespace ExpenseTracker.Domain.Interfaces
     public interface IUnitOfWork : IDisposable
     {
         IUserRepository Users { get; }
+        IRoleRepository Roles { get; }
         ICategoryRepository Categories { get; }
         IExpenseRepository Expenses { get; }
         IIncomeRepository Incomes { get; }

@@ -2,12 +2,14 @@ using ExpenseTracker.Application.DTOs;
 using ExpenseTracker.Application.Features.Commands;
 using ExpenseTracker.Application.Features.Queries;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ExpenseTracker.WebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class UsersController : ControllerBase
     {
         private readonly IMediator _mediator;
@@ -18,10 +20,11 @@ namespace ExpenseTracker.WebAPI.Controllers
         }
 
         /// <summary>
-        /// Get all users
+        /// Get all users (Admin only)
         /// </summary>
         /// <returns>List of all users</returns>
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<IEnumerable<UserDto>>> GetAll()
         {
             var query = new GetAllUsersQuery();
@@ -30,13 +33,22 @@ namespace ExpenseTracker.WebAPI.Controllers
         }
 
         /// <summary>
-        /// Get user by ID
+        /// Get user by ID (Users can only access their own data, Admins can access any)
         /// </summary>
         /// <param name="id">User ID</param>
         /// <returns>User with specified ID</returns>
         [HttpGet("{id}")]
         public async Task<ActionResult<UserDto>> GetById(int id)
         {
+            var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var currentUserRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+            // Users can only access their own data, admins can access any
+            if (currentUserRole != "Admin" && currentUserId != id.ToString())
+            {
+                return Forbid();
+            }
+
             var query = new GetUserByIdQuery { Id = id };
             var user = await _mediator.Send(query);
             if (user == null)
@@ -47,25 +59,7 @@ namespace ExpenseTracker.WebAPI.Controllers
         }
 
         /// <summary>
-        /// Create a new user
-        /// </summary>
-        /// <param name="createUserDto">User data to create</param>
-        /// <returns>Created user</returns>
-        [HttpPost]
-        public async Task<ActionResult<UserDto>> Create([FromBody] CreateUserDto createUserDto)
-        {
-            var command = new CreateUserCommand 
-            { 
-                Username = createUserDto.Username,
-                Email = createUserDto.Email,
-                Password = createUserDto.Password
-            };
-            var createdUser = await _mediator.Send(command);
-            return CreatedAtAction(nameof(GetById), new { id = createdUser.Id }, createdUser);
-        }
-
-        /// <summary>
-        /// Update an existing user
+        /// Update an existing user (Users can only update their own data, Admins can update any)
         /// </summary>
         /// <param name="id">User ID to update</param>
         /// <param name="updateUserDto">Updated user data</param>
@@ -73,6 +67,15 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpPut("{id}")]
         public async Task<ActionResult<UserDto>> Update(int id, [FromBody] UpdateUserDto updateUserDto)
         {
+            var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var currentUserRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+            // Users can only update their own data, admins can update any
+            if (currentUserRole != "Admin" && currentUserId != id.ToString())
+            {
+                return Forbid();
+            }
+
             try
             {
                 var command = new UpdateUserCommand 
@@ -91,13 +94,22 @@ namespace ExpenseTracker.WebAPI.Controllers
         }
 
         /// <summary>
-        /// Get user balance (total incomes - total expenses)
+        /// Get user balance (total incomes - total expenses) (Users can only access their own balance, Admins can access any)
         /// </summary>
         /// <param name="id">User ID</param>
         /// <returns>User balance information</returns>
         [HttpGet("{id}/balance")]
         public async Task<ActionResult<BalanceDto>> GetBalance(int id)
         {
+            var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+            var currentUserRole = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value;
+
+            // Users can only access their own balance, admins can access any
+            if (currentUserRole != "Admin" && currentUserId != id.ToString())
+            {
+                return Forbid();
+            }
+
             var query = new GetUserBalanceQuery { UserId = id };
             var balance = await _mediator.Send(query);
             if (balance == null)
@@ -108,11 +120,12 @@ namespace ExpenseTracker.WebAPI.Controllers
         }
 
         /// <summary>
-        /// Delete a user
+        /// Delete a user (Admin only)
         /// </summary>
         /// <param name="id">User ID to delete</param>
         /// <returns>No content</returns>
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> Delete(int id)
         {
             var command = new DeleteUserCommand { Id = id };

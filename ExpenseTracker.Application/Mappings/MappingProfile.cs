@@ -1,5 +1,6 @@
 using AutoMapper;
 using ExpenseTracker.Application.DTOs;
+using ExpenseTracker.Application.Features.Commands;
 using ExpenseTracker.Domain.Entities;
 using ExpenseTracker.Domain.Enums;
 
@@ -42,6 +43,16 @@ namespace ExpenseTracker.Application.Mappings
                 .ForMember(dest => dest.Type, opt => opt.MapFrom(src => src.Type.ToString()));
             
             CreateMap<CreateCategoryDto, Category>()
+                .IgnoreBaseEntityProperties()
+                .AfterMap((src, dest) =>
+                {
+                    if (Enum.TryParse<CategoryType>(src.Type, out var categoryType))
+                    {
+                        dest.UpdateType(categoryType);
+                    }
+                });
+            
+            CreateMap<CreateCategoryCommand, Category>()
                 .IgnoreBaseEntityProperties()
                 .AfterMap((src, dest) =>
                 {
