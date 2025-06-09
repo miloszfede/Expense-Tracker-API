@@ -11,15 +11,6 @@ namespace ExpenseTracker.Application.Mappings
             return expression
                 .ForMember("Id", opt => opt.Ignore());
         }
-
-        public static IMappingExpression<TSource, TDestination> IgnoreUserAuditProperties<TSource, TDestination>(
-            this IMappingExpression<TSource, TDestination> expression)
-        {
-            return expression
-                .ForMember("Id", opt => opt.Ignore())
-                .ForMember("CreatedAt", opt => opt.Ignore())
-                .ForMember("UpdatedAt", opt => opt.Ignore());
-        }
         
         public static CategoryType ToCategoryType(this string value)
         {

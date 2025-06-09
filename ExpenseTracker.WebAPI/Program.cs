@@ -3,19 +3,32 @@ using ExpenseTracker.Domain.Dependencies;
 using ExpenseTracker.Infrastructure.Dependencies;
 using FluentValidation.AspNetCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
 using System.Text;
 using DotNetEnv;
+using Serilog;
 
 if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development" || 
     string.IsNullOrEmpty(Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")))
 {
-    Env.Load();
+    Env.Load("../.env");
 }
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog((context, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .WriteTo.Console()
+        .WriteTo.File("logs/expensetracker-.txt", rollingInterval: RollingInterval.Day)
+        .Enrich.FromLogContext()
+        .Enrich.WithThreadId()
+        .Enrich.WithEnvironmentUserName();
+});
 
 builder.Services.AddControllers();
 builder.Services.AddFluentValidationAutoValidation()
@@ -84,20 +97,63 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 builder.Services.AddDomainDependencies();
-builder.Services.AddApplicationDependencies();
 builder.Services.AddInfrastructureDependencies();
+builder.Services.AddApplicationDependencies();
+builder.Services.AddHealthChecks()
+    .AddSqlServer(
+        connectionString: builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found."),
+        healthQuery: "SELECT 1;",
+        name: "sqlserver",
+        failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded,
+        tags: new[] { "ready", "db" });
 
 var app = builder.Build();
+
+app.UseSerilogRequestLogging(options =>
+{
+    options.MessageTemplate = "HTTP {RequestMethod} {RequestPath} responded {StatusCode} in {Elapsed:0.0000} ms";
+    options.GetLevel = (httpContext, elapsed, ex) => ex != null ? 
+        Serilog.Events.LogEventLevel.Error : 
+        elapsed > 1000 ? Serilog.Events.LogEventLevel.Warning : 
+        Serilog.Events.LogEventLevel.Information;
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        diagnosticContext.Set("RequestHost", httpContext.Request.Host.Value ?? "unknown");
+        diagnosticContext.Set("RequestScheme", httpContext.Request.Scheme);
+        diagnosticContext.Set("UserAgent", httpContext.Request.Headers["User-Agent"].FirstOrDefault() ?? "unknown");
+    };
+});
 
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
 app.UseHttpsRedirection();
 app.UseAuthentication(); 
 app.UseAuthorization();
+
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(x => new
+            {
+                name = x.Key,
+                status = x.Value.Status.ToString(),
+                duration = x.Value.Duration.TotalMilliseconds,
+                data = x.Value.Data
+            }),
+            totalDuration = report.TotalDuration.TotalMilliseconds
+        };
+        await context.Response.WriteAsync(System.Text.Json.JsonSerializer.Serialize(response));
+    }
+});
+
 app.MapControllers();
 
 app.Run();

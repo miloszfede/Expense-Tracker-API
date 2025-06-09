@@ -28,7 +28,23 @@ namespace ExpenseTracker.Application.Features.Commands.Handlers
 
         protected override async Task<Expense> AddEntityAsync(Expense entity)
         {
-            return await UnitOfWork.Expenses.AddAsync(entity);
+            var category = await UnitOfWork.Categories.GetByIdAsync(entity.CategoryId);
+            if (category == null)
+            {
+                throw new ValidationException($"Category with ID {entity.CategoryId} does not exist.");
+            }
+
+            var expenseWithCategoryName = new Expense
+            {
+                UserId = entity.UserId,
+                Amount = entity.Amount,
+                Date = entity.Date,
+                Note = entity.Note,
+                CategoryId = entity.CategoryId,
+                CategoryName = category.Name
+            };
+
+            return await UnitOfWork.Expenses.AddAsync(expenseWithCategoryName);
         }
 
         protected override string GetEntityName() => "Expense";
@@ -61,7 +77,26 @@ namespace ExpenseTracker.Application.Features.Commands.Handlers
 
         protected override async Task UpdateEntityAsync(Expense entity)
         {
-            await UnitOfWork.Expenses.UpdateAsync(entity);
+            var category = await UnitOfWork.Categories.GetByIdAsync(entity.CategoryId);
+            if (category == null)
+            {
+                throw new ValidationException($"Category with ID {entity.CategoryId} does not exist.");
+            }
+
+            var updatedExpense = new Expense
+            {
+                UserId = entity.UserId,
+                Amount = entity.Amount,
+                Date = entity.Date,
+                Note = entity.Note,
+                CategoryId = entity.CategoryId,
+                CategoryName = category.Name
+            };
+            
+            updatedExpense.SetId(entity.Id);
+            updatedExpense.SetExternalId(entity.ExternalId);
+            
+            await UnitOfWork.Expenses.UpdateAsync(updatedExpense);
         }
 
         protected override string GetEntityName() => "Expense";

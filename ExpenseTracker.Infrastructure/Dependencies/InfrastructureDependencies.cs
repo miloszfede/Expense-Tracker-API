@@ -14,6 +14,8 @@ namespace ExpenseTracker.Infrastructure.Dependencies
             services.AddScoped<IUnitOfWork, UnitOfWork>();
             services.AddScoped<IJwtService, JwtService>();
             services.AddScoped<IAuthService, AuthService>();
+            services.AddScoped<IAuthorizationService, AuthorizationService>();
+            services.AddScoped<IValidationService, ValidationService>();
 
             return services;
         }

@@ -13,10 +13,12 @@ namespace ExpenseTracker.WebAPI.Controllers
     public class ExpensesController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ExpenseTracker.Infrastructure.Services.IAuthorizationService _authorizationService;
 
-        public ExpensesController(IMediator mediator)
+        public ExpensesController(IMediator mediator, ExpenseTracker.Infrastructure.Services.IAuthorizationService authorizationService)
         {
             _mediator = mediator;
+            _authorizationService = authorizationService;
         }
 
         /// <summary>
@@ -46,6 +48,12 @@ namespace ExpenseTracker.WebAPI.Controllers
             {
                 return NotFound();
             }
+
+            if (!_authorizationService.CanUserAccessResource(User, expense.UserId))
+            {
+                return Forbid();
+            }
+
             return Ok(expense);
         }
 
@@ -57,6 +65,11 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpGet("user/{userId}")]
         public async Task<ActionResult<IEnumerable<ExpenseDto>>> GetByUserId(int userId)
         {
+            if (!_authorizationService.CanUserAccessResource(User, userId))
+            {
+                return Forbid();
+            }
+
             var query = new GetExpensesByUserIdQuery { UserId = userId };
             var expenses = await _mediator.Send(query);
             return Ok(expenses);
@@ -71,6 +84,11 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpGet("user/{userId}/category/{categoryId}")]
         public async Task<ActionResult<IEnumerable<ExpenseDto>>> GetByCategory(int userId, int categoryId)
         {
+            if (!_authorizationService.CanUserAccessResource(User, userId))
+            {
+                return Forbid();
+            }
+
             var query = new GetExpensesByCategoryQuery { UserId = userId, CategoryId = categoryId };
             var expenses = await _mediator.Send(query);
             return Ok(expenses);
@@ -86,6 +104,11 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpGet("user/{userId}/daterange")]
         public async Task<ActionResult<IEnumerable<ExpenseDto>>> GetByDateRange(int userId, [FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
         {
+            if (!_authorizationService.CanUserAccessResource(User, userId))
+            {
+                return Forbid();
+            }
+
             var query = new GetExpensesByDateRangeQuery { UserId = userId, StartDate = startDate, EndDate = endDate };
             var expenses = await _mediator.Send(query);
             return Ok(expenses);
@@ -99,13 +122,19 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<ExpenseDto>> Create([FromBody] CreateExpenseDto createExpenseDto)
         {
+            var currentUserId = _authorizationService.GetCurrentUserId(User);
+            if (!currentUserId.HasValue)
+            {
+                return Unauthorized();
+            }
+
             var command = new CreateExpenseCommand 
             { 
                 Amount = createExpenseDto.Amount,
                 Date = createExpenseDto.Date,
                 Note = createExpenseDto.Note,
                 CategoryId = createExpenseDto.CategoryId,
-                UserId = createExpenseDto.UserId
+                UserId = currentUserId.Value 
             };
             var createdExpense = await _mediator.Send(command);
             return CreatedAtAction(nameof(GetById), new { id = createdExpense.Id }, createdExpense);
@@ -122,6 +151,18 @@ namespace ExpenseTracker.WebAPI.Controllers
         {
             try
             {
+                var existingExpenseQuery = new GetExpenseByIdQuery { Id = id };
+                var existingExpense = await _mediator.Send(existingExpenseQuery);
+                if (existingExpense == null)
+                {
+                    return NotFound();
+                }
+
+                if (!_authorizationService.CanUserAccessResource(User, existingExpense.UserId))
+                {
+                    return Forbid();
+                }
+
                 var command = new UpdateExpenseCommand 
                 { 
                     Id = id,
@@ -147,6 +188,18 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(int id)
         {
+            var existingExpenseQuery = new GetExpenseByIdQuery { Id = id };
+            var existingExpense = await _mediator.Send(existingExpenseQuery);
+            if (existingExpense == null)
+            {
+                return NotFound();
+            }
+
+            if (!_authorizationService.CanUserAccessResource(User, existingExpense.UserId))
+            {
+                return Forbid();
+            }
+
             var command = new DeleteExpenseCommand { Id = id };
             var result = await _mediator.Send(command);
             if (!result)

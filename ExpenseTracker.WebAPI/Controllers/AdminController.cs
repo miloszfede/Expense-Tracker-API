@@ -33,7 +33,8 @@ namespace ExpenseTracker.WebAPI.Controllers
                     Id = u.Id,
                     Username = u.Username,
                     Email = u.Email,
-                    RoleId = u.RoleId
+                    RoleId = u.RoleId,
+                    RoleName = u.RoleName
                 });
 
                 return Ok(userDtos);

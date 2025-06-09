@@ -57,6 +57,7 @@ namespace ExpenseTracker.Application.Features.Commands.Handlers
             return new UpdateCategoryDto
             {
                 Name = command.Name,
+                Type = command.Type,
                 IsDefault = command.IsDefault
             };
         }

@@ -15,10 +15,12 @@ namespace ExpenseTracker.WebAPI.Controllers
     public class CategoriesController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ExpenseTracker.Infrastructure.Services.IAuthorizationService _authorizationService;
 
-        public CategoriesController(IMediator mediator)
+        public CategoriesController(IMediator mediator, ExpenseTracker.Infrastructure.Services.IAuthorizationService authorizationService)
         {
             _mediator = mediator;
+            _authorizationService = authorizationService;
         }
 
         /// <summary>
@@ -47,6 +49,12 @@ namespace ExpenseTracker.WebAPI.Controllers
             {
                 return NotFound();
             }
+
+            if (!_authorizationService.CanUserAccessResource(User, category.UserId, allowDefault: category.IsDefault))
+            {
+                return Forbid();
+            }
+
             return Ok(category);
         }
 
@@ -58,6 +66,11 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpGet("user/{userId}")]
         public async Task<ActionResult<IEnumerable<CategoryDto>>> GetByUserId(int userId)
         {
+            if (!_authorizationService.CanUserAccessResource(User, userId))
+            {
+                return Forbid();
+            }
+
             var query = new GetCategoriesByUserIdQuery { UserId = userId };
             var categories = await _mediator.Send(query);
             return Ok(categories);
@@ -86,12 +99,18 @@ namespace ExpenseTracker.WebAPI.Controllers
         {
             try
             {
+                var currentUserId = _authorizationService.GetCurrentUserId(User);
+                if (!currentUserId.HasValue)
+                {
+                    return Unauthorized();
+                }
+
                 var command = new CreateCategoryCommand 
                 { 
                     Name = createCategoryDto.Name,
                     Type = createCategoryDto.Type,
-                    UserId = createCategoryDto.UserId,
-                    IsDefault = createCategoryDto.IsDefault
+                    UserId = currentUserId.Value, 
+                    IsDefault = createCategoryDto.IsDefault && _authorizationService.IsUserAdmin(User) 
                 };
                 var createdCategory = await _mediator.Send(command);
                 return CreatedAtAction(nameof(GetById), new { id = createdCategory.Id }, createdCategory);
@@ -120,11 +139,24 @@ namespace ExpenseTracker.WebAPI.Controllers
         {
             try
             {
+                var existingCategoryQuery = new GetCategoryByIdQuery { Id = id };
+                var existingCategory = await _mediator.Send(existingCategoryQuery);
+                if (existingCategory == null)
+                {
+                    return NotFound();
+                }
+
+                if (!_authorizationService.CanUserAccessResource(User, existingCategory.UserId, allowDefault: false)) 
+                {
+                    return Forbid();
+                }
+
                 var command = new UpdateCategoryCommand 
                 { 
                     Id = id,
                     Name = updateCategoryDto.Name,
-                    IsDefault = updateCategoryDto.IsDefault
+                    Type = updateCategoryDto.Type,
+                    IsDefault = updateCategoryDto.IsDefault && _authorizationService.IsUserAdmin(User) 
                 };
                 var updatedCategory = await _mediator.Send(command);
                 return Ok(updatedCategory);
@@ -143,6 +175,18 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(int id)
         {
+            var existingCategoryQuery = new GetCategoryByIdQuery { Id = id };
+            var existingCategory = await _mediator.Send(existingCategoryQuery);
+            if (existingCategory == null)
+            {
+                return NotFound();
+            }
+
+            if (!_authorizationService.CanUserAccessResource(User, existingCategory.UserId, allowDefault: false)) 
+            {
+                return Forbid();
+            }
+
             var command = new DeleteCategoryCommand { Id = id };
             var result = await _mediator.Send(command);
             if (!result)

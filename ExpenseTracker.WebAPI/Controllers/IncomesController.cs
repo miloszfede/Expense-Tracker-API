@@ -13,10 +13,12 @@ namespace ExpenseTracker.WebAPI.Controllers
     public class IncomesController : ControllerBase
     {
         private readonly IMediator _mediator;
+        private readonly ExpenseTracker.Infrastructure.Services.IAuthorizationService _authorizationService;
 
-        public IncomesController(IMediator mediator)
+        public IncomesController(IMediator mediator, ExpenseTracker.Infrastructure.Services.IAuthorizationService authorizationService)
         {
             _mediator = mediator;
+            _authorizationService = authorizationService;
         }
 
         /// <summary>
@@ -46,6 +48,12 @@ namespace ExpenseTracker.WebAPI.Controllers
             {
                 return NotFound();
             }
+
+            if (!_authorizationService.CanUserAccessResource(User, income.UserId))
+            {
+                return Forbid();
+            }
+
             return Ok(income);
         }
 
@@ -57,6 +65,11 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpGet("user/{userId}")]
         public async Task<ActionResult<IEnumerable<IncomeDto>>> GetByUserId(int userId)
         {
+            if (!_authorizationService.CanUserAccessResource(User, userId))
+            {
+                return Forbid();
+            }
+
             var query = new GetIncomesByUserIdQuery { UserId = userId };
             var incomes = await _mediator.Send(query);
             return Ok(incomes);
@@ -71,6 +84,11 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpGet("user/{userId}/category/{categoryId}")]
         public async Task<ActionResult<IEnumerable<IncomeDto>>> GetByCategory(int userId, int categoryId)
         {
+            if (!_authorizationService.CanUserAccessResource(User, userId))
+            {
+                return Forbid();
+            }
+
             var query = new GetIncomesByCategoryQuery { UserId = userId, CategoryId = categoryId };
             var incomes = await _mediator.Send(query);
             return Ok(incomes);
@@ -86,6 +104,11 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpGet("user/{userId}/daterange")]
         public async Task<ActionResult<IEnumerable<IncomeDto>>> GetByDateRange(int userId, [FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
         {
+            if (!_authorizationService.CanUserAccessResource(User, userId))
+            {
+                return Forbid();
+            }
+
             var query = new GetIncomesByDateRangeQuery { UserId = userId, StartDate = startDate, EndDate = endDate };
             var incomes = await _mediator.Send(query);
             return Ok(incomes);
@@ -99,13 +122,19 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<IncomeDto>> Create([FromBody] CreateIncomeDto createIncomeDto)
         {
+            var currentUserId = _authorizationService.GetCurrentUserId(User);
+            if (!currentUserId.HasValue)
+            {
+                return Unauthorized();
+            }
+
             var command = new CreateIncomeCommand 
             { 
                 Amount = createIncomeDto.Amount,
                 Date = createIncomeDto.Date,
                 Note = createIncomeDto.Note,
                 CategoryId = createIncomeDto.CategoryId,
-                UserId = createIncomeDto.UserId
+                UserId = currentUserId.Value 
             };
             var createdIncome = await _mediator.Send(command);
             return CreatedAtAction(nameof(GetById), new { id = createdIncome.Id }, createdIncome);
@@ -122,6 +151,18 @@ namespace ExpenseTracker.WebAPI.Controllers
         {
             try
             {
+                var existingIncomeQuery = new GetIncomeByIdQuery { Id = id };
+                var existingIncome = await _mediator.Send(existingIncomeQuery);
+                if (existingIncome == null)
+                {
+                    return NotFound();
+                }
+
+                if (!_authorizationService.CanUserAccessResource(User, existingIncome.UserId))
+                {
+                    return Forbid();
+                }
+
                 var command = new UpdateIncomeCommand 
                 { 
                     Id = id,
@@ -147,6 +188,18 @@ namespace ExpenseTracker.WebAPI.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult> Delete(int id)
         {
+            var existingIncomeQuery = new GetIncomeByIdQuery { Id = id };
+            var existingIncome = await _mediator.Send(existingIncomeQuery);
+            if (existingIncome == null)
+            {
+                return NotFound();
+            }
+
+            if (!_authorizationService.CanUserAccessResource(User, existingIncome.UserId))
+            {
+                return Forbid();
+            }
+
             var command = new DeleteIncomeCommand { Id = id };
             var result = await _mediator.Send(command);
             if (!result)

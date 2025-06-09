@@ -28,7 +28,23 @@ namespace ExpenseTracker.Application.Features.Commands.Handlers
 
         protected override async Task<Income> AddEntityAsync(Income entity)
         {
-            return await UnitOfWork.Incomes.AddAsync(entity);
+            var category = await UnitOfWork.Categories.GetByIdAsync(entity.CategoryId);
+            if (category == null)
+            {
+                throw new ValidationException($"Category with ID {entity.CategoryId} does not exist.");
+            }
+
+            var incomeWithCategoryName = new Income
+            {
+                UserId = entity.UserId,
+                Amount = entity.Amount,
+                Date = entity.Date,
+                Note = entity.Note,
+                CategoryId = entity.CategoryId,
+                CategoryName = category.Name
+            };
+
+            return await UnitOfWork.Incomes.AddAsync(incomeWithCategoryName);
         }
 
         protected override string GetEntityName() => "Income";
@@ -61,7 +77,26 @@ namespace ExpenseTracker.Application.Features.Commands.Handlers
 
         protected override async Task UpdateEntityAsync(Income entity)
         {
-            await UnitOfWork.Incomes.UpdateAsync(entity);
+            var category = await UnitOfWork.Categories.GetByIdAsync(entity.CategoryId);
+            if (category == null)
+            {
+                throw new ValidationException($"Category with ID {entity.CategoryId} does not exist.");
+            }
+
+            var updatedIncome = new Income
+            {
+                UserId = entity.UserId,
+                Amount = entity.Amount,
+                Date = entity.Date,
+                Note = entity.Note,
+                CategoryId = entity.CategoryId,
+                CategoryName = category.Name
+            };
+            
+            updatedIncome.SetId(entity.Id);
+            updatedIncome.SetExternalId(entity.ExternalId);
+            
+            await UnitOfWork.Incomes.UpdateAsync(updatedIncome);
         }
 
         protected override string GetEntityName() => "Income";
