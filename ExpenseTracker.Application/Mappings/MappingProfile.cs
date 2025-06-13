@@ -1,5 +1,6 @@
 using AutoMapper;
 using ExpenseTracker.Application.DTOs;
+using ExpenseTracker.Application.Features.Commands;
 using ExpenseTracker.Domain.Entities;
 using ExpenseTracker.Domain.Enums;
 
@@ -51,6 +52,16 @@ namespace ExpenseTracker.Application.Mappings
                     }
                 });
             
+            CreateMap<CreateCategoryCommand, Category>()
+                .IgnoreBaseEntityProperties()
+                .AfterMap((src, dest) =>
+                {
+                    if (Enum.TryParse<CategoryType>(src.Type, out var categoryType))
+                    {
+                        dest.UpdateType(categoryType);
+                    }
+                });
+            
             CreateMap<UpdateCategoryDto, Category>()
                 .IgnoreBaseEntityProperties()
                 .ForMember(dest => dest.UserId, opt => opt.Ignore());
@@ -63,12 +74,14 @@ namespace ExpenseTracker.Application.Mappings
             
             CreateMap<CreateExpenseDto, Expense>()
                 .IgnoreBaseEntityProperties()
+                .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.CategoryId))
                 .ForMember(dest => dest.Category, opt => opt.Ignore())
                 .ForMember(dest => dest.CategoryName, opt => opt.Ignore());
             
             CreateMap<UpdateExpenseDto, Expense>()
                 .IgnoreBaseEntityProperties()
                 .ForMember(dest => dest.UserId, opt => opt.Ignore())
+                .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.CategoryId))
                 .ForMember(dest => dest.Category, opt => opt.Ignore())
                 .ForMember(dest => dest.CategoryName, opt => opt.Ignore());
         }
@@ -80,12 +93,14 @@ namespace ExpenseTracker.Application.Mappings
             
             CreateMap<CreateIncomeDto, Income>()
                 .IgnoreBaseEntityProperties()
+                .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.CategoryId))
                 .ForMember(dest => dest.Category, opt => opt.Ignore())
                 .ForMember(dest => dest.CategoryName, opt => opt.Ignore());
             
             CreateMap<UpdateIncomeDto, Income>()
                 .IgnoreBaseEntityProperties()
                 .ForMember(dest => dest.UserId, opt => opt.Ignore())
+                .ForMember(dest => dest.CategoryId, opt => opt.MapFrom(src => src.CategoryId))
                 .ForMember(dest => dest.Category, opt => opt.Ignore())
                 .ForMember(dest => dest.CategoryName, opt => opt.Ignore());
         }

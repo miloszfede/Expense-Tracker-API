@@ -12,6 +12,7 @@ namespace ExpenseTracker.Infrastructure.Data
         private bool _disposed = false;
 
         private IUserRepository? _users;
+        private IRoleRepository? _roles;
         private ICategoryRepository? _categories;
         private IExpenseRepository? _expenses;
         private IIncomeRepository? _incomes;
@@ -23,66 +24,102 @@ namespace ExpenseTracker.Infrastructure.Data
 
         public bool HasActiveTransaction => _transaction != null;
 
-        public IUserRepository Users 
-        { 
-            get 
-            { 
-                if (_disposed) throw new ObjectDisposedException(nameof(UnitOfWork));
-                
+        public IUserRepository Users
+        {
+            get
+            {
+                if (_disposed)
+                {
+                    throw new ObjectDisposedException(nameof(UnitOfWork));
+                }
+
                 if (_users == null)
                 {
                     _users = new UserRepository();
                     EnsureConnection();
                     _users.SetConnection(_connection!, _transaction);
                 }
+
                 return _users;
             }
         }
 
-        public ICategoryRepository Categories 
-        { 
-            get 
-            { 
-                if (_disposed) throw new ObjectDisposedException(nameof(UnitOfWork));
-                
+        public IRoleRepository Roles
+        {
+            get
+            {
+                if (_disposed)
+                {
+                    throw new ObjectDisposedException(nameof(UnitOfWork));
+                }
+
+                if (_roles == null)
+                {
+                    _roles = new RoleRepository();
+                    EnsureConnection();
+                    _roles.SetConnection(_connection!, _transaction);
+                }
+
+                return _roles;
+            }
+        }
+
+        public ICategoryRepository Categories
+        {
+            get
+            {
+                if (_disposed)
+                {
+                    throw new ObjectDisposedException(nameof(UnitOfWork));
+                }
+
                 if (_categories == null)
                 {
                     _categories = new CategoryRepository();
                     EnsureConnection();
                     _categories.SetConnection(_connection!, _transaction);
                 }
+
                 return _categories;
             }
         }
 
-        public IExpenseRepository Expenses 
-        { 
-            get 
-            { 
-                if (_disposed) throw new ObjectDisposedException(nameof(UnitOfWork));
-                
+        public IExpenseRepository Expenses
+        {
+            get
+            {
+                if (_disposed)
+                {
+                    throw new ObjectDisposedException(nameof(UnitOfWork));
+                }
+
                 if (_expenses == null)
                 {
                     _expenses = new ExpenseRepository();
                     EnsureConnection();
                     _expenses.SetConnection(_connection!, _transaction);
                 }
+
                 return _expenses;
             }
         }
 
-        public IIncomeRepository Incomes 
-        { 
-            get 
-            { 
-                if (_disposed) throw new ObjectDisposedException(nameof(UnitOfWork));
-                
+        public IIncomeRepository Incomes
+        {
+            get
+            {
+                if (_disposed)
+                {
+                    throw new ObjectDisposedException(nameof(UnitOfWork));
+                }
+
                 if (_incomes == null)
                 {
                     _incomes = new IncomeRepository();
                     EnsureConnection();
                     _incomes.SetConnection(_connection!, _transaction);
                 }
+
                 return _incomes;
             }
         }
@@ -98,11 +135,15 @@ namespace ExpenseTracker.Infrastructure.Data
 
         public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
         {
-            if (_disposed) throw new ObjectDisposedException(nameof(UnitOfWork));
-            
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(UnitOfWork));
+            }
+
             EnsureConnection();
             _transaction = _connection!.BeginTransaction();
             _users?.SetConnection(_connection, _transaction);
+            _roles?.SetConnection(_connection, _transaction);
             _categories?.SetConnection(_connection, _transaction);
             _expenses?.SetConnection(_connection, _transaction);
             _incomes?.SetConnection(_connection, _transaction);
@@ -112,9 +153,15 @@ namespace ExpenseTracker.Infrastructure.Data
 
         public async Task CommitTransactionAsync(CancellationToken cancellationToken = default)
         {
-            if (_disposed) throw new ObjectDisposedException(nameof(UnitOfWork));
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(UnitOfWork));
+            }
+
             if (_transaction == null)
+            {
                 throw new InvalidOperationException("No active transaction to commit.");
+            }
 
             try
             {
@@ -135,9 +182,15 @@ namespace ExpenseTracker.Infrastructure.Data
 
         public async Task RollbackTransactionAsync(CancellationToken cancellationToken = default)
         {
-            if (_disposed) throw new ObjectDisposedException(nameof(UnitOfWork));
+            if (_disposed)
+            {
+                throw new ObjectDisposedException(nameof(UnitOfWork));
+            }
+
             if (_transaction == null)
+            {
                 throw new InvalidOperationException("No active transaction to rollback.");
+            }
 
             try
             {
@@ -157,6 +210,7 @@ namespace ExpenseTracker.Infrastructure.Data
             {
                 throw new ObjectDisposedException(nameof(UnitOfWork));
             }
+
             await Task.CompletedTask;
             return _transaction != null ? 1 : 0;
         }
@@ -175,9 +229,9 @@ namespace ExpenseTracker.Infrastructure.Data
                 {
                     _transaction?.Rollback();
                 }
-                catch 
+                catch
                 {
-                   // Ignore
+                    // Ignore
                 }
 
                 _transaction?.Dispose();
@@ -193,4 +247,3 @@ namespace ExpenseTracker.Infrastructure.Data
         }
     }
 }
-

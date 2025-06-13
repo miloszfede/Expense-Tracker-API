@@ -5,6 +5,8 @@ namespace ExpenseTracker.Application.DTOs
         public int Id { get; init; }
         public string Username { get; init; } = string.Empty;
         public string Email { get; init; } = string.Empty;
+        public int RoleId { get; init; }
+        public string RoleName { get; init; } = string.Empty;
     }
 
     public class CreateUserDto

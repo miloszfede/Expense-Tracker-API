@@ -4,7 +4,6 @@ using ExpenseTracker.Domain.Entities;
 using ExpenseTracker.Domain.Enums;
 using ExpenseTracker.Domain.Interfaces;
 using FluentValidation;
-using MediatR;
 using Microsoft.Extensions.Logging;
 
 namespace ExpenseTracker.Application.Features.Commands.Handlers
@@ -14,64 +13,36 @@ namespace ExpenseTracker.Application.Features.Commands.Handlers
         IMapper mapper,
         IValidator<CreateCategoryDto> validator,
         ILogger<CreateCategoryCommandHandler> logger)
-        : IRequestHandler<CreateCategoryCommand, CategoryDto>
+        : BaseCreateCommandHandler<CreateCategoryCommand, CategoryDto, Category, CreateCategoryDto>(unitOfWork, mapper, validator, logger)
     {
-        private readonly IUnitOfWork _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
-        private readonly IMapper _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
-        private readonly IValidator<CreateCategoryDto> _validator = validator ?? throw new ArgumentNullException(nameof(validator));
-        private readonly ILogger<CreateCategoryCommandHandler> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
-        public async Task<CategoryDto> Handle(CreateCategoryCommand request, CancellationToken cancellationToken)
+        protected override CreateCategoryDto MapToCreateDto(CreateCategoryCommand command)
         {
-            var createDto = new CreateCategoryDto
+            return new CreateCategoryDto
             {
-                Name = request.Name,
-                Type = request.Type,
-                UserId = request.UserId,
-                IsDefault = request.IsDefault
+                Name = command.Name,
+                Type = command.Type,
+                UserId = command.UserId,
+                IsDefault = command.IsDefault
             };
-
-            var validationResult = await _validator.ValidateAsync(createDto, cancellationToken);
-            if (!validationResult.IsValid)
-            {
-                throw new ValidationException(validationResult.Errors);
-            }
-
-            await _unitOfWork.BeginTransactionAsync(cancellationToken);
-            try
-            {
-                if (Enum.TryParse<CategoryType>(createDto.Type, out var categoryType))
-                {
-                    var existingCategory = await _unitOfWork.Categories.GetByUserIdNameAndTypeAsync(
-                        createDto.UserId, createDto.Name, categoryType);
-                    
-                    if (existingCategory != null)
-                    {
-                        throw new InvalidOperationException($"A category named '{createDto.Name}' of type '{createDto.Type}' already exists for this user.");
-                    }
-                }
-
-                var category = _mapper.Map<Category>(createDto);
-
-                var createdCategory = await _unitOfWork.Categories.AddAsync(category);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
-                await _unitOfWork.CommitTransactionAsync(cancellationToken);
-
-                _logger.LogInformation("Category {CategoryName} created successfully with ID {CategoryId}", 
-                    createdCategory.Name, createdCategory.Id);
-
-                return _mapper.Map<CategoryDto>(createdCategory);
-            }
-            catch (Exception ex)
-            {
-                if (_unitOfWork.HasActiveTransaction)
-                {
-                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
-                }
-                _logger.LogError(ex, "Error creating category {CategoryName}", request.Name);
-                throw;
-            }
         }
+
+        protected override async Task<Category> AddEntityAsync(Category entity)
+        {
+            if (Enum.TryParse<CategoryType>(entity.Type.ToString(), out var categoryType))
+            {
+                var existingCategory = await UnitOfWork.Categories.GetByUserIdNameAndTypeAsync(
+                    entity.UserId, entity.Name, categoryType);
+                
+                if (existingCategory != null)
+                {
+                    throw new InvalidOperationException($"A category named '{entity.Name}' of type '{entity.Type}' already exists for this user.");
+                }
+            }
+
+            return await UnitOfWork.Categories.AddAsync(entity);
+        }
+
+        protected override string GetEntityName() => "Category";
     }
 
     public class UpdateCategoryCommandHandler(
@@ -79,92 +50,50 @@ namespace ExpenseTracker.Application.Features.Commands.Handlers
         IMapper mapper,
         IValidator<UpdateCategoryDto> validator,
         ILogger<UpdateCategoryCommandHandler> logger)
-        : IRequestHandler<UpdateCategoryCommand, CategoryDto>
+        : BaseUpdateCommandHandler<UpdateCategoryCommand, CategoryDto, Category, UpdateCategoryDto>(unitOfWork, mapper, validator, logger)
     {
-        private readonly IUnitOfWork _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
-        private readonly IMapper _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
-        private readonly IValidator<UpdateCategoryDto> _validator = validator ?? throw new ArgumentNullException(nameof(validator));
-        private readonly ILogger<UpdateCategoryCommandHandler> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
-        public async Task<CategoryDto> Handle(UpdateCategoryCommand request, CancellationToken cancellationToken)
+        protected override UpdateCategoryDto MapToUpdateDto(UpdateCategoryCommand command)
         {
-            var updateDto = new UpdateCategoryDto
+            return new UpdateCategoryDto
             {
-                Name = request.Name,
-                IsDefault = request.IsDefault
+                Name = command.Name,
+                Type = command.Type,
+                IsDefault = command.IsDefault
             };
-
-            var validationResult = await _validator.ValidateAsync(updateDto, cancellationToken);
-            if (!validationResult.IsValid)
-            {
-                throw new ValidationException(validationResult.Errors);
-            }
-
-            await _unitOfWork.BeginTransactionAsync(cancellationToken);
-            try
-            {
-                var category = await _unitOfWork.Categories.GetByIdAsync(request.Id);
-                if (category == null)
-                {
-                    throw new KeyNotFoundException($"Category with id {request.Id} not found");
-                }
-
-                _mapper.Map(updateDto, category);
-
-                await _unitOfWork.Categories.UpdateAsync(category);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
-                await _unitOfWork.CommitTransactionAsync(cancellationToken);
-
-                _logger.LogInformation("Category {CategoryId} updated successfully", category.Id);
-                return _mapper.Map<CategoryDto>(category);
-            }
-            catch (Exception ex)
-            {
-                if (_unitOfWork.HasActiveTransaction)
-                {
-                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
-                }
-                _logger.LogError(ex, "Error updating category {CategoryId}", request.Id);
-                throw;
-            }
         }
+
+        protected override int GetEntityId(UpdateCategoryCommand command) => command.Id;
+
+        protected override async Task<Category?> GetEntityByIdAsync(int id)
+        {
+            return await UnitOfWork.Categories.GetByIdAsync(id);
+        }
+
+        protected override async Task UpdateEntityAsync(Category entity)
+        {
+            await UnitOfWork.Categories.UpdateAsync(entity);
+        }
+
+        protected override string GetEntityName() => "Category";
     }
 
     public class DeleteCategoryCommandHandler(
         IUnitOfWork unitOfWork,
         ILogger<DeleteCategoryCommandHandler> logger)
-        : IRequestHandler<DeleteCategoryCommand, bool>
+        : BaseDeleteCommandHandler<DeleteCategoryCommand, Category>(unitOfWork, logger)
     {
-        private readonly IUnitOfWork _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
-        private readonly ILogger<DeleteCategoryCommandHandler> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        protected override int GetEntityId(DeleteCategoryCommand command) => command.Id;
 
-        public async Task<bool> Handle(DeleteCategoryCommand request, CancellationToken cancellationToken)
+        protected override async Task<Category?> GetEntityByIdAsync(int id)
         {
-            await _unitOfWork.BeginTransactionAsync(cancellationToken);
-            try
-            {
-                var category = await _unitOfWork.Categories.GetByIdAsync(request.Id);
-                if (category == null)
-                {
-                    throw new KeyNotFoundException($"Category with id {request.Id} not found");
-                }
-
-                await _unitOfWork.Categories.DeleteAsync(request.Id);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
-                await _unitOfWork.CommitTransactionAsync(cancellationToken);
-
-                _logger.LogInformation("Category {CategoryId} deleted successfully", request.Id);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                if (_unitOfWork.HasActiveTransaction)
-                {
-                    await _unitOfWork.RollbackTransactionAsync(cancellationToken);
-                }
-                _logger.LogError(ex, "Error deleting category {CategoryId}", request.Id);
-                throw;
-            }
+            return await UnitOfWork.Categories.GetByIdAsync(id);
         }
+
+        protected override async Task DeleteEntityAsync(int id)
+        {
+            await UnitOfWork.Categories.DeleteAsync(id);
+        }
+
+        protected override string GetEntityName() => "Category";
     }
 }

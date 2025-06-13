@@ -3,7 +3,6 @@ using ExpenseTracker.Application.DTOs;
 using ExpenseTracker.Domain.Entities;
 using ExpenseTracker.Domain.Interfaces;
 using FluentValidation;
-using MediatR;
 using Microsoft.Extensions.Logging;
 
 namespace ExpenseTracker.Application.Features.Commands.Handlers
@@ -13,50 +12,42 @@ namespace ExpenseTracker.Application.Features.Commands.Handlers
         IMapper mapper,
         IValidator<CreateIncomeDto> validator,
         ILogger<CreateIncomeCommandHandler> logger)
-        : IRequestHandler<CreateIncomeCommand, IncomeDto>
+        : BaseCreateCommandHandler<CreateIncomeCommand, IncomeDto, Income, CreateIncomeDto>(unitOfWork, mapper, validator, logger)
     {
-        private readonly IUnitOfWork _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
-        private readonly IMapper _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
-        private readonly IValidator<CreateIncomeDto> _validator = validator ?? throw new ArgumentNullException(nameof(validator));
-        private readonly ILogger<CreateIncomeCommandHandler> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
-        public async Task<IncomeDto> Handle(CreateIncomeCommand request, CancellationToken cancellationToken)
+        protected override CreateIncomeDto MapToCreateDto(CreateIncomeCommand command)
         {
-            var createDto = new CreateIncomeDto
+            return new CreateIncomeDto
             {
-                Amount = request.Amount,
-                Date = request.Date,
-                Note = request.Note,
-                CategoryId = request.CategoryId,
-                UserId = request.UserId
+                Amount = command.Amount,
+                Date = command.Date,
+                Note = command.Note,
+                CategoryId = command.CategoryId,
+                UserId = command.UserId
+            };
+        }
+
+        protected override async Task<Income> AddEntityAsync(Income entity)
+        {
+            var category = await UnitOfWork.Categories.GetByIdAsync(entity.CategoryId);
+            if (category == null)
+            {
+                throw new ValidationException($"Category with ID {entity.CategoryId} does not exist.");
+            }
+
+            var incomeWithCategoryName = new Income
+            {
+                UserId = entity.UserId,
+                Amount = entity.Amount,
+                Date = entity.Date,
+                Note = entity.Note,
+                CategoryId = entity.CategoryId,
+                CategoryName = category.Name
             };
 
-            var validationResult = await _validator.ValidateAsync(createDto, cancellationToken);
-            if (!validationResult.IsValid)
-            {
-                throw new ValidationException(validationResult.Errors);
-            }
-
-            await _unitOfWork.BeginTransactionAsync(cancellationToken);
-            try
-            {
-                var income = _mapper.Map<Income>(createDto);
-                var createdIncome = await _unitOfWork.Incomes.AddAsync(income);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
-                await _unitOfWork.CommitTransactionAsync(cancellationToken);
-
-                _logger.LogInformation("Income created successfully with ID {IncomeId} for user {UserId}", 
-                    createdIncome.Id, createdIncome.UserId);
-
-                return _mapper.Map<IncomeDto>(createdIncome);
-            }
-            catch (Exception ex)
-            {
-                await _unitOfWork.RollbackTransactionAsync(cancellationToken);
-                _logger.LogError(ex, "Error creating income for user {UserId}", request.UserId);
-                throw;
-            }
+            return await UnitOfWork.Incomes.AddAsync(incomeWithCategoryName);
         }
+
+        protected override string GetEntityName() => "Income";
     }
 
     public class UpdateIncomeCommandHandler(
@@ -64,87 +55,70 @@ namespace ExpenseTracker.Application.Features.Commands.Handlers
         IMapper mapper,
         IValidator<UpdateIncomeDto> validator,
         ILogger<UpdateIncomeCommandHandler> logger)
-        : IRequestHandler<UpdateIncomeCommand, IncomeDto>
+        : BaseUpdateCommandHandler<UpdateIncomeCommand, IncomeDto, Income, UpdateIncomeDto>(unitOfWork, mapper, validator, logger)
     {
-        private readonly IUnitOfWork _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
-        private readonly IMapper _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
-        private readonly IValidator<UpdateIncomeDto> _validator = validator ?? throw new ArgumentNullException(nameof(validator));
-        private readonly ILogger<UpdateIncomeCommandHandler> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
-        public async Task<IncomeDto> Handle(UpdateIncomeCommand request, CancellationToken cancellationToken)
+        protected override UpdateIncomeDto MapToUpdateDto(UpdateIncomeCommand command)
         {
-            var updateDto = new UpdateIncomeDto
+            return new UpdateIncomeDto
             {
-                Amount = request.Amount,
-                Date = request.Date,
-                Note = request.Note,
-                CategoryId = request.CategoryId
+                Amount = command.Amount,
+                Date = command.Date,
+                Note = command.Note,
+                CategoryId = command.CategoryId
             };
-
-            var validationResult = await _validator.ValidateAsync(updateDto, cancellationToken);
-            if (!validationResult.IsValid)
-            {
-                throw new ValidationException(validationResult.Errors);
-            }
-
-            await _unitOfWork.BeginTransactionAsync(cancellationToken);
-            try
-            {
-                var income = await _unitOfWork.Incomes.GetByIdAsync(request.Id);
-                if (income == null)
-                {
-                    throw new KeyNotFoundException($"Income with id {request.Id} not found");
-                }
-
-                _mapper.Map(updateDto, income);
-                await _unitOfWork.Incomes.UpdateAsync(income);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
-                await _unitOfWork.CommitTransactionAsync(cancellationToken);
-
-                _logger.LogInformation("Income {IncomeId} updated successfully", income.Id);
-                return _mapper.Map<IncomeDto>(income);
-            }
-            catch (Exception ex)
-            {
-                await _unitOfWork.RollbackTransactionAsync(cancellationToken);
-                _logger.LogError(ex, "Error updating income {IncomeId}", request.Id);
-                throw;
-            }
         }
+
+        protected override int GetEntityId(UpdateIncomeCommand command) => command.Id;
+
+        protected override async Task<Income?> GetEntityByIdAsync(int id)
+        {
+            return await UnitOfWork.Incomes.GetByIdAsync(id);
+        }
+
+        protected override async Task UpdateEntityAsync(Income entity)
+        {
+            var category = await UnitOfWork.Categories.GetByIdAsync(entity.CategoryId);
+            if (category == null)
+            {
+                throw new ValidationException($"Category with ID {entity.CategoryId} does not exist.");
+            }
+
+            var updatedIncome = new Income
+            {
+                UserId = entity.UserId,
+                Amount = entity.Amount,
+                Date = entity.Date,
+                Note = entity.Note,
+                CategoryId = entity.CategoryId,
+                CategoryName = category.Name
+            };
+            
+            updatedIncome.SetId(entity.Id);
+            updatedIncome.SetExternalId(entity.ExternalId);
+            
+            await UnitOfWork.Incomes.UpdateAsync(updatedIncome);
+        }
+
+        protected override string GetEntityName() => "Income";
     }
 
     public class DeleteIncomeCommandHandler(
         IUnitOfWork unitOfWork,
         ILogger<DeleteIncomeCommandHandler> logger)
-        : IRequestHandler<DeleteIncomeCommand, bool>
+        : BaseDeleteCommandHandler<DeleteIncomeCommand, Income>(unitOfWork, logger)
     {
-        private readonly IUnitOfWork _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
-        private readonly ILogger<DeleteIncomeCommandHandler> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        protected override int GetEntityId(DeleteIncomeCommand command) => command.Id;
 
-        public async Task<bool> Handle(DeleteIncomeCommand request, CancellationToken cancellationToken)
+        protected override async Task<Income?> GetEntityByIdAsync(int id)
         {
-            await _unitOfWork.BeginTransactionAsync(cancellationToken);
-            try
-            {
-                var income = await _unitOfWork.Incomes.GetByIdAsync(request.Id);
-                if (income == null)
-                {
-                    throw new KeyNotFoundException($"Income with id {request.Id} not found");
-                }
-
-                await _unitOfWork.Incomes.DeleteAsync(request.Id);
-                await _unitOfWork.SaveChangesAsync(cancellationToken);
-                await _unitOfWork.CommitTransactionAsync(cancellationToken);
-
-                _logger.LogInformation("Income {IncomeId} deleted successfully", request.Id);
-                return true;
-            }
-            catch (Exception ex)
-            {
-                await _unitOfWork.RollbackTransactionAsync(cancellationToken);
-                _logger.LogError(ex, "Error deleting income {IncomeId}", request.Id);
-                throw;
-            }
+            return await UnitOfWork.Incomes.GetByIdAsync(id);
         }
+
+        protected override async Task DeleteEntityAsync(int id)
+        {
+            await UnitOfWork.Incomes.DeleteAsync(id);
+        }
+
+        protected override string GetEntityName() => "Income";
     }
 }

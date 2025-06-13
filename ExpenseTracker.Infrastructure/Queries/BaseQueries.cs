@@ -79,30 +79,43 @@ namespace ExpenseTracker.Infrastructure.Queries
 
         #region User Entity Specific Templates
 
-        private const string UserSelectClause = "InternalId as Id, Id as ExternalId, Username, Email, PasswordHash, CreatedAt, UpdatedAt";
+        private const string UserSelectClause = "u.InternalId as Id, u.Id as ExternalId, u.Username, u.Email, u.PasswordHash, u.CreatedAt, u.UpdatedAt, u.RoleId, r.Name as RoleName";
 
         public static string GetUserById() =>
-            GetSimpleEntityById(UserSelectClause, "Users");
+            $@"SELECT {UserSelectClause}
+            FROM Users u
+            LEFT JOIN Roles r ON u.RoleId = r.InternalId
+            WHERE u.InternalId = @Id";
 
         public static string GetAllUsers() =>
-            GetAllSimpleEntities(UserSelectClause, "Users", "CreatedAt DESC");
+            $@"SELECT {UserSelectClause}
+            FROM Users u
+            LEFT JOIN Roles r ON u.RoleId = r.InternalId
+            ORDER BY u.CreatedAt DESC";
 
         public static string GetUserByEmail() =>
-            GetSimpleEntityById(UserSelectClause, "Users", "Email = @Email");
+            $@"SELECT {UserSelectClause}
+            FROM Users u
+            LEFT JOIN Roles r ON u.RoleId = r.InternalId
+            WHERE u.Email = @Email";
 
         public static string GetUserByUsername() =>
-            GetSimpleEntityById(UserSelectClause, "Users", "Username = @Username");
+            $@"SELECT {UserSelectClause}
+            FROM Users u
+            LEFT JOIN Roles r ON u.RoleId = r.InternalId
+            WHERE u.Username = @Username";
 
         public static string InsertUser() =>
-            @"INSERT INTO Users (Id, Username, Email, PasswordHash, CreatedAt, UpdatedAt)
+            @"INSERT INTO Users (Id, Username, Email, PasswordHash, RoleId, CreatedAt, UpdatedAt)
             OUTPUT INSERTED.InternalId
-            VALUES (@ExternalId, @Username, @Email, @PasswordHash, @CreatedAt, @UpdatedAt)";
+            VALUES (@ExternalId, @Username, @Email, @PasswordHash, @RoleId, @CreatedAt, @UpdatedAt)";
 
         public static string UpdateUser() =>
             @"UPDATE Users 
             SET Username = @Username, 
                 Email = @Email, 
                 PasswordHash = @PasswordHash, 
+                RoleId = @RoleId,
                 UpdatedAt = @UpdatedAt
             WHERE InternalId = @Id";
 
@@ -151,6 +164,32 @@ namespace ExpenseTracker.Infrastructure.Queries
             SET Name = @Name, 
                 Type = @Type, 
                 IsDefault = @IsDefault
+            WHERE InternalId = @Id";
+
+        #endregion
+
+        #region Role Entity Specific Templates
+
+        private const string RoleSelectClause = "InternalId as Id, Id as ExternalId, Name, Description";
+
+        public static string GetRoleById() =>
+            GetSimpleEntityById(RoleSelectClause, "Roles");
+
+        public static string GetAllRoles() =>
+            GetAllSimpleEntities(RoleSelectClause, "Roles", "Name");
+
+        public static string GetRoleByName() =>
+            GetSimpleEntityById(RoleSelectClause, "Roles", "Name = @Name");
+
+        public static string InsertRole() =>
+            @"INSERT INTO Roles (Id, Name, Description)
+            OUTPUT INSERTED.InternalId
+            VALUES (@ExternalId, @Name, @Description)";
+
+        public static string UpdateRole() =>
+            @"UPDATE Roles 
+            SET Name = @Name, 
+                Description = @Description
             WHERE InternalId = @Id";
 
         #endregion

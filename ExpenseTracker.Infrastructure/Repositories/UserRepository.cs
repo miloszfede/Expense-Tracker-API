@@ -31,6 +31,7 @@ namespace ExpenseTracker.Infrastructure.Repositories
                 Username = user.Username,
                 Email = user.Email,
                 PasswordHash = user.PasswordHash,
+                RoleId = user.RoleId,
                 CreatedAt = now,
                 UpdatedAt = now
             }, GetTransaction());
@@ -44,6 +45,7 @@ namespace ExpenseTracker.Infrastructure.Repositories
             newUser.SetExternalId(externalId);
             newUser.SetTimestamps(now, now);
             newUser.UpdatePassword(user.PasswordHash);
+            newUser.SetRole(user.RoleId);
             
             return newUser;
         }
@@ -59,6 +61,7 @@ namespace ExpenseTracker.Infrastructure.Repositories
                 user.Username,
                 user.Email,
                 user.PasswordHash,
+                user.RoleId,
                 user.UpdatedAt
             }, GetTransaction());
         }
